@@ -1,0 +1,46 @@
+
+export type CasePriority = "urgent" | "high" | "normal";
+
+export interface WorklistCase {
+  id: string;
+  patientLabel: string;
+  age: number;
+  sex: string;
+
+  screeningType: string;
+  screeningResult: string;
+
+  priority: CasePriority;
+  status: string;
+
+  assignedTo: string | null;
+  facility: string;
+
+  nextAction: string;
+  dueDate: string | null;
+  lastUpdated: string;
+}
+
+export interface WorklistSummary {
+  totalCases: number;
+  urgentCases: number;
+  overdueCases: number;
+  unassignedCases: number;
+}
+
+export interface WorklistFilters {
+  search: string;
+  priority: CasePriority | "all";
+  status: string;
+  facility: string;
+  assignedTo: string;
+}
+
+export interface WorklistResponse {
+  summary: WorklistSummary;
+  cases: WorklistCase[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
