@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { ArrowLeft, ClipboardList, UserRound } from "lucide-react";
 import AssistedResponseForm, {
@@ -9,11 +9,11 @@ import "./assisted-response.css";
 
 function AssistedPatientResponsePage() {
   const [response, setResponse] = useState<AssistedResponse | null>(null);
-
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-const patientLabel = searchParams.get("patient") || "Demo Patient";
-const caseId = searchParams.get("caseId") || "DEMO-CASE";
+  const patientLabel = searchParams.get("patient") || "Demo Patient";
+  const caseId = searchParams.get("caseId") || "DEMO-CASE";
 
   const handleResponseSubmit = (submittedResponse: AssistedResponse) => {
     setResponse(submittedResponse);
@@ -56,9 +56,7 @@ const caseId = searchParams.get("caseId") || "DEMO-CASE";
             </p>
           </div>
 
-          <span className="assisted-demo-badge">
-            Synthetic demo record
-          </span>
+          <span className="assisted-demo-badge">Synthetic demo record</span>
         </section>
 
         {!response ? (
@@ -68,8 +66,8 @@ const caseId = searchParams.get("caseId") || "DEMO-CASE";
             <div className="assisted-page-success" role="status">
               <strong>Response recorded</strong>
               <p>
-                The patient's responses have been recorded by the
-                demonstration coordinator.
+                The patient's responses have been recorded by the demonstration
+                coordinator.
               </p>
             </div>
 
@@ -78,15 +76,34 @@ const caseId = searchParams.get("caseId") || "DEMO-CASE";
               patientLabel={patientLabel}
               caseId={caseId}
             />
+
+            <button
+              type="button"
+              className="assisted-back-button"
+              onClick={() =>
+                navigate("/worklist", {
+                  state: {
+                    assistedResponseRecorded: true,
+                    caseId,
+                    recordedAt: response.recordedAt,
+                    recordedBy: response.recordedBy,
+                    staffRole: response.staffRole,
+                  },
+                })
+              }
+            >
+              <ArrowLeft size={17} />
+              Return to worklist
+            </button>
           </>
         )}
 
         <div className="assisted-page-disclaimer">
           <strong>Demonstration only</strong>
           <p>
-            This page uses synthetic patient and staff information.
-            Responses are held in the current browser session and are not
-            sent to a healthcare facility.
+            This page uses synthetic patient and staff information. Responses
+            are held in the current browser session and are not sent to a
+            healthcare facility.
           </p>
         </div>
       </div>

@@ -21,6 +21,17 @@ export interface WorklistCase {
   lastUpdated: string;
 }
 
+export interface CaseTimelineEvent {
+  id: string;
+  caseId: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actor: string;
+  actorRole: string;
+  timestamp: string;
+}
+
 export interface WorklistSummary {
   totalCases: number;
   urgentCases: number;

@@ -1,7 +1,7 @@
 import "./worklist.css";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import WorklistStats from "./components/WorklistStats";
 import WorklistFilters from "./components/WorklistFilters";
 import WorklistTable from "./components/WorklistTable";
@@ -10,14 +10,17 @@ import { getWorklist } from "../../services/api/worklistService";
 import type {
   WorklistFilters as FilterValues,
   WorklistResponse,
+  CaseTimelineEvent,
 } from "./worklist.types";
+import { caseTimelineMock } from "./worklist.mock";
 
 function WorklistPage() {
   const [worklist, setWorklist] = useState<WorklistResponse | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const processedResponseRef = useRef<string | null>(null);
   const [filters, setFilters] = useState<FilterValues>({
     search: "",
     priority: "all",
@@ -25,8 +28,9 @@ function WorklistPage() {
     facility: "all",
     assignedTo: "all",
   });
-
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [timelineEvents, setTimelineEvents] =
+    useState<CaseTimelineEvent[]>(caseTimelineMock);
 
   async function loadWorklist() {
     try {
@@ -46,7 +50,65 @@ function WorklistPage() {
     loadWorklist();
   }, []);
 
+  useEffect(() => {
+    const state = location.state as {
+      assistedResponseRecorded?: boolean;
+      caseId?: string;
+      recordedAt?: string;
+      recordedBy?: string;
+      staffRole?: string;
+    } | null;
+
+    if (
+      !state?.assistedResponseRecorded ||
+      !state.caseId ||
+      !state.recordedAt ||
+      !state.recordedBy ||
+      !state.staffRole
+    ) {
+      return;
+    }
+
+    const eventKey = `${state.caseId}-${state.recordedAt}`;
+
+    if (processedResponseRef.current === eventKey) return;
+
+    processedResponseRef.current = eventKey;
+
+    const newEvent: CaseTimelineEvent = {
+      id: `EVENT-${Date.now()}`,
+      caseId: state.caseId,
+      eventType: "patient_response_recorded",
+      title: "Patient response recorded by staff",
+      description:
+        "The coordinator recorded the patient's acknowledgement, understanding and confidence during a phone-assisted interaction.",
+      actor: state.recordedBy,
+      actorRole: state.staffRole,
+      timestamp: state.recordedAt,
+    };
+
+    setTimelineEvents((previous) => [newEvent, ...previous]);
+
+    navigate(location.pathname, {
+      replace: true,
+      state: null,
+    });
+  }, [location.key, location.pathname, location.state, navigate]);
+
   const cases = worklist?.cases ?? [];
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const requestedCaseId = searchParams.get("caseId");
+
+    if (!requestedCaseId || cases.length === 0) return;
+
+    const matchingCase = cases.find((item) => item.id === requestedCaseId);
+
+    if (matchingCase) {
+      setSelectedCaseId(matchingCase.id);
+    }
+  }, [cases, location.search]);
 
   const selectedCase = cases.find((item) => item.id === selectedCaseId) ?? null;
 
@@ -162,38 +224,83 @@ function WorklistPage() {
         onSelectCase={(item) => setSelectedCaseId(item.id)}
       />
 
-      <CaseDetails
-        caseItem={selectedCase}
-        onClose={() => setSelectedCaseId(null)}
-        availableOwners={availableOwners}
-        onAssignOwner={(caseId, owner) => {
-          setWorklist((previous) => {
-            if (!previous) return previous;
+      {selectedCase !== null && (
+        <CaseDetails
+          caseItem={selectedCase}
+          timelineEvents={timelineEvents.filter(
+            (event) => event.caseId === selectedCase?.id,
+          )}
+          onClose={() => {
+            setSelectedCaseId(null);
 
-            return {
-              ...previous,
-              cases: previous.cases.map((item) =>
-                item.id === caseId
-                  ? {
-                      ...item,
-                      assignedTo: owner,
-                      lastUpdated: new Date().toISOString(),
-                    }
-                  : item,
-              ),
+            const state = location.state as {
+              returnTo?: string;
+            } | null;
+
+            if (state?.returnTo) {
+              navigate(state.returnTo, { replace: true });
+            } else {
+              navigate("/worklist", { replace: true });
+            }
+          }}
+          availableOwners={availableOwners}
+          onAssignOwner={(caseId, owner) => {
+            const currentCase = cases.find((item) => item.id === caseId);
+
+            if (!currentCase) return;
+
+            const previousOwner = currentCase.assignedTo;
+            const isReassignment = previousOwner !== null;
+
+            const now = new Date().toISOString();
+
+            // Update the case owner
+            setWorklist((previous) => {
+              if (!previous) return previous;
+
+              return {
+                ...previous,
+                cases: previous.cases.map((item) =>
+                  item.id === caseId
+                    ? {
+                        ...item,
+                        assignedTo: owner,
+                        lastUpdated: now,
+                      }
+                    : item,
+                ),
+              };
+            });
+
+            // Record the assignment activity
+            const newEvent: CaseTimelineEvent = {
+              id: `EVENT-${Date.now()}`,
+              caseId,
+              eventType: isReassignment ? "case_reassigned" : "case_assigned",
+              title: isReassignment
+                ? "Case owner reassigned"
+                : "Case owner assigned",
+              description: isReassignment
+                ? `Case ownership changed from ${previousOwner} to ${owner}.`
+                : `Case assigned to ${owner}.`,
+              actor: "Demo Coordinator",
+              actorRole: "Care Coordinator",
+              timestamp: now,
             };
-          });
-        }}
-        onRecordAssistedResponse={(caseItem) => {
-          setSelectedCaseId(null);
 
-          navigate(
-            `/assisted-response?caseId=${encodeURIComponent(
-              caseItem.id,
-            )}&patient=${encodeURIComponent(caseItem.patientLabel)}`,
-          );
-        }}
-      />
+            setTimelineEvents((previous) => [newEvent, ...previous]);
+          }}
+          onRecordAssistedResponse={(caseItem) => {
+            setSelectedCaseId(null);
+
+            navigate(
+              `/assisted-response?caseId=${encodeURIComponent(
+                caseItem.id,
+              )}&patient=${encodeURIComponent(caseItem.patientLabel)}`,
+            );
+          }}
+        />
+      )}
     </main>
   );
 }

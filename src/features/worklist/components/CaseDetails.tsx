@@ -8,9 +8,11 @@ import {
   Clock3,
   PhoneCall,
 } from "lucide-react";
-
+import CaseTimeline from "./CaseTimeline";
+import type { CaseTimelineEvent } from "../worklist.types";
 import type { WorklistCase } from "../worklist.types";
 import PriorityBadge from "./PriorityBadge";
+import { formatDateTime } from "../../../utils/formatDateTime";
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
@@ -18,6 +20,7 @@ interface CaseDetailsProps {
   availableOwners: string[];
   onAssignOwner: (caseId: string, owner: string) => void;
   onRecordAssistedResponse: (caseItem: WorklistCase) => void;
+  timelineEvents: CaseTimelineEvent[];
 }
 
 function CaseDetails({
@@ -26,6 +29,7 @@ function CaseDetails({
   availableOwners,
   onAssignOwner,
   onRecordAssistedResponse,
+  timelineEvents,
 }: CaseDetailsProps) {
   const [selectedOwner, setSelectedOwner] = useState("");
 
@@ -248,17 +252,11 @@ function CaseDetails({
 
             <div className="case-detail-field">
               <span>Last updated</span>
-              <strong>
-                {new Date(caseItem.lastUpdated).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </strong>
+              <strong>{formatDateTime(caseItem.lastUpdated)}</strong>
             </div>
           </section>
+
+          <CaseTimeline events={timelineEvents} />
 
           <section className="case-detail-notice">
             <Clock3 size={17} />

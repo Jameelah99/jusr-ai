@@ -4,6 +4,8 @@ import PatientLinkGate from "./features/patient/PatientLinkGate";
 import AppLayout from "./components/layout/AppLayout";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import AssistedPatientResponsePage from "./features/patient/AssistedPatientResponsePage";
+import PatientsPage from "./features/patients/PatientsPage";
+import PatientProfilePage from "./features/patients/PatientProfilePage";
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -35,7 +37,9 @@ function App() {
 
         <Route path="worklist" element={<WorklistPage />} />
 
-        <Route path="patients" element={<PlaceholderPage title="Patients" />} />
+        <Route path="patients" element={<PatientsPage />} />
+
+        <Route path="patients/:patientId" element={<PatientProfilePage />} />
 
         <Route
           path="referrals"
