@@ -1,8 +1,18 @@
 
-import type { DashboardSummary } from "../../features/dashboard/dashboard.types";
+import type { DashboardData } from "../../features/dashboard/dashboard.types";
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await fetch("/api/dashboard/summary");
+export async function getDashboardSummary(
+  role: string,
+  facilityId: string
+): Promise<DashboardData> {
+  const params = new URLSearchParams({
+    role,
+    facilityId,
+  });
+
+  const response = await fetch(
+    `/api/dashboard/summary?${params.toString()}`
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -10,7 +20,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     );
   }
 
-  const data: DashboardSummary = await response.json();
+  const data: DashboardData = await response.json();
 
   return data;
 }

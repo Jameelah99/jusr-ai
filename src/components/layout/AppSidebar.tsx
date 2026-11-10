@@ -14,8 +14,15 @@ import {
   X,
 } from "lucide-react";
 
+import type { LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import logo from "../../assets/jusr-logo-cropped.png";
+
+import { useUser } from "../../context/UserContext";
+import {
+  hasPermission,
+  type AppPermission,
+} from "../../context/permissions";
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -24,23 +31,75 @@ interface AppSidebarProps {
   onClose: () => void;
 }
 
-const navigation = [
+interface NavigationItem {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  permission: AppPermission;
+}
+
+interface NavigationSection {
+  title: string;
+  items: NavigationItem[];
+}
+
+const navigation: NavigationSection[] = [
   {
     title: "WORKSPACE",
     items: [
-      { label: "Overview", path: "/", icon: LayoutDashboard },
-      { label: "Worklist", path: "/worklist", icon: ClipboardList },
-      { label: "Patients", path: "/patients", icon: Users },
-      { label: "Referrals", path: "/referrals", icon: ArrowLeftRight },
-      { label: "Consultations", path: "/consultations", icon: MessageSquare },
+      {
+        label: "Overview",
+        path: "/",
+        icon: LayoutDashboard,
+        permission: "dashboard",
+      },
+      {
+        label: "Worklist",
+        path: "/worklist",
+        icon: ClipboardList,
+        permission: "worklist",
+      },
+      {
+        label: "Patients",
+        path: "/patients",
+        icon: Users,
+        permission: "patients",
+      },
+      {
+        label: "Referrals",
+        path: "/referrals",
+        icon: ArrowLeftRight,
+        permission: "referrals",
+      },
+      {
+        label: "Consultations",
+        path: "/consultations",
+        icon: MessageSquare,
+        permission: "consultations",
+      },
     ],
   },
   {
     title: "INSIGHTS & ADMIN",
     items: [
-      { label: "Measures", path: "/measures", icon: ChartNoAxesCombined },
-      { label: "Facilities", path: "/facilities", icon: Building2 },
-      { label: "Settings", path: "/settings", icon: Settings },
+      {
+        label: "Measures",
+        path: "/measures",
+        icon: ChartNoAxesCombined,
+        permission: "measures",
+      },
+      {
+        label: "Facilities",
+        path: "/facilities",
+        icon: Building2,
+        permission: "facilities",
+      },
+      {
+        label: "Settings",
+        path: "/settings",
+        icon: Settings,
+        permission: "settings",
+      },
     ],
   },
 ];
@@ -51,6 +110,18 @@ function AppSidebar({
   mobileOpen,
   onClose,
 }: AppSidebarProps) {
+  const { activeUser } = useUser();
+
+  // Display only sections containing permitted navigation items
+  const visibleNavigation = navigation
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        hasPermission(activeUser.role, item.permission)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <>
       {mobileOpen && (
@@ -77,12 +148,14 @@ function AppSidebar({
           </button>
         </div>
 
-        {/* NAVIGATION */}
+        {/* ROLE-BASED NAVIGATION */}
         <nav className="sidebar-navigation">
-          {navigation.map((section) => (
+          {visibleNavigation.map((section) => (
             <div className="nav-section" key={section.title}>
               {!collapsed && (
-                <p className="nav-section-title">{section.title}</p>
+                <p className="nav-section-title">
+                  {section.title}
+                </p>
               )}
 
               {section.items.map((item) => {
@@ -118,13 +191,16 @@ function AppSidebar({
           <button
             className="collapse-button desktop-only"
             onClick={onToggle}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={
+              collapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
           >
             {collapsed ? (
               <ChevronRight size={18} />
             ) : (
               <ChevronLeft size={18} />
             )}
+
             {!collapsed && <span>Collapse sidebar</span>}
           </button>
         </div>

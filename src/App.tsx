@@ -1,3 +1,4 @@
+
 import WorklistPage from "./features/worklist/WorklistPage";
 import { Routes, Route } from "react-router-dom";
 import PatientLinkGate from "./features/patient/PatientLinkGate";
@@ -6,6 +7,9 @@ import DashboardPage from "./features/dashboard/DashboardPage";
 import AssistedPatientResponsePage from "./features/patient/AssistedPatientResponsePage";
 import PatientsPage from "./features/patients/PatientsPage";
 import PatientProfilePage from "./features/patients/PatientProfilePage";
+import ReferralsPage from "./features/referrals/ReferralsPage";
+import { UserProvider } from "./context/UserContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -27,41 +31,77 @@ function PlaceholderPage({ title }: { title: string }) {
 
 function App() {
   return (
-    <Routes>
-      <Route
-        path="assisted-response"
-        element={<AssistedPatientResponsePage />}
-      />
-      <Route element={<AppLayout />}>
-        <Route index element={<DashboardPage />} />
-
-        <Route path="worklist" element={<WorklistPage />} />
-
-        <Route path="patients" element={<PatientsPage />} />
-
-        <Route path="patients/:patientId" element={<PatientProfilePage />} />
-
+    <UserProvider>
+      <Routes>
+        {/* Patient-facing and assisted response routes */}
         <Route
-          path="referrals"
-          element={<PlaceholderPage title="Referrals" />}
+          path="assisted-response"
+          element={<AssistedPatientResponsePage />}
         />
 
-        <Route
-          path="consultations"
-          element={<PlaceholderPage title="Consultations" />}
-        />
+        <Route path="p/:linkToken" element={<PatientLinkGate />} />
 
-        <Route path="measures" element={<PlaceholderPage title="Measures" />} />
+        {/* Staff application */}
+        <Route element={<AppLayout />}>
+          {/* Dashboard */}
+          <Route element={<ProtectedRoute permission="dashboard" />}>
+            <Route index element={<DashboardPage />} />
+          </Route>
 
-        <Route
-          path="facilities"
-          element={<PlaceholderPage title="Facilities" />}
-        />
+          {/* Worklist */}
+          <Route element={<ProtectedRoute permission="worklist" />}>
+            <Route path="worklist" element={<WorklistPage />} />
+          </Route>
 
-        <Route path="settings" element={<PlaceholderPage title="Settings" />} />
-      </Route>
-      <Route path="p/:linkToken" element={<PatientLinkGate />} />
-    </Routes>
+          {/* Patients */}
+          <Route element={<ProtectedRoute permission="patients" />}>
+            <Route path="patients" element={<PatientsPage />} />
+
+            <Route
+              path="patients/:patientId"
+              element={<PatientProfilePage />}
+            />
+          </Route>
+
+          {/* Referrals */}
+          <Route element={<ProtectedRoute permission="referrals" />}>
+            <Route path="referrals" element={<ReferralsPage />} />
+          </Route>
+
+          {/* Consultations */}
+          <Route element={<ProtectedRoute permission="consultations" />}>
+            <Route
+              path="consultations"
+              element={<PlaceholderPage title="Consultations" />}
+            />
+          </Route>
+
+          {/* Measures */}
+          <Route element={<ProtectedRoute permission="measures" />}>
+            <Route
+              path="measures"
+              element={<PlaceholderPage title="Measures" />}
+            />
+          </Route>
+
+          {/* Facilities */}
+          <Route element={<ProtectedRoute permission="facilities" />}>
+            <Route
+              path="facilities"
+              element={<PlaceholderPage title="Facilities" />}
+            />
+          </Route>
+
+          {/* Settings */}
+          <Route element={<ProtectedRoute permission="settings" />}>
+            <Route
+              path="settings"
+              element={<PlaceholderPage title="Settings" />}
+            />
+          </Route>
+        </Route>
+      </Routes>
+    </UserProvider>
   );
 }
 

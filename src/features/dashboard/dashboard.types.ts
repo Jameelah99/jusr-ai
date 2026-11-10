@@ -44,3 +44,72 @@ export interface DashboardSummary {
   recentActivity: RecentActivityItem[];
   referrals: ReferralOverview;
 }
+
+// Referring Clinician Dashboard
+
+export interface ClinicianCase {
+  id: string;
+  patientLabel: string;
+  screeningType: string;
+  screeningResult: string;
+  priority: "urgent" | "high" | "normal";
+  status: string;
+  nextAction: string;
+  dueLabel: string;
+}
+
+export interface ReferringClinicianDashboard {
+  assignedCases: number;
+  casesAwaitingReview: number;
+  referralsPending: number;
+  recentCases: ClinicianCase[];
+}
+
+// Receiving Clinician Dashboard
+
+export interface IncomingReferral {
+  id: string;
+  patientLabel: string;
+  screeningType: string;
+  priority: "urgent" | "high" | "normal";
+  referringFacility: string;
+  referralReason: string;
+  receivedAt: string;
+  status: "pending" | "accepted" | "rejected" | "escalated" | "outcome_recorded";
+}
+
+export interface ReceivingClinicianDashboard {
+  pendingReferrals: number;
+  acceptedReferrals: number;
+  urgentReferrals: number;
+  referrals: IncomingReferral[];
+}
+
+// Facility Administrator Dashboard
+// R-09: No clinical case or patient information.
+
+export interface StaffAccessSummary {
+  totalStaff: number;
+  activeStaff: number;
+  inactiveStaff: number;
+  pendingAccess: number;
+}
+
+export interface FacilityConnection {
+  id: string;
+  facilityName: string;
+  connectionStatus: "connected" | "disconnected" | "pending";
+  lastChecked: string;
+}
+
+export interface FacilityAdministratorDashboard {
+  staff: StaffAccessSummary;
+  facilityConnections: FacilityConnection[];
+}
+
+
+export type DashboardData =
+  | DashboardSummary
+  | ReferringClinicianDashboard
+  | ReceivingClinicianDashboard
+  | FacilityAdministratorDashboard;

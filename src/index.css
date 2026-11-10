@@ -498,6 +498,7 @@ p {
 /* PROFILE */
 
 .profile-button {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -505,6 +506,27 @@ p {
   border: none;
   color: var(--color-text-primary);
   text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+
+/* Invisible user selector covering the profile area */
+.profile-user-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  cursor: pointer;
+  appearance: none;
+  z-index: 2;
+}
+
+.profile-user-select:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 4px;
+  border-radius: var(--radius-md);
 }
 
 .profile-avatar {
