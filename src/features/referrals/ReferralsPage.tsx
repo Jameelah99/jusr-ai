@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { getReferrals } from "./referralsService";
@@ -17,8 +18,9 @@ function ReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
-    null,
+    null
   );
+
   const [filters, setFilters] = useState<FilterValues>({
     search: "",
     priority: "all",
@@ -36,7 +38,7 @@ function ReferralsPage() {
       setData(response);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to load referrals.",
+        err instanceof Error ? err.message : "Unable to load referrals."
       );
     } finally {
       setLoading(false);
@@ -47,16 +49,50 @@ function ReferralsPage() {
     loadReferrals();
   }, []);
 
+  function handleReferralUpdated(updatedReferral: Referral) {
+    setData((currentData) => {
+      if (!currentData) return currentData;
+
+      const updatedReferrals = currentData.referrals.map((item) =>
+        item.id === updatedReferral.id ? updatedReferral : item
+      );
+
+      const summary = {
+        totalReferrals: updatedReferrals.length,
+        pendingReferrals: updatedReferrals.filter(
+          (item) => item.status === "pending"
+        ).length,
+        acceptedReferrals: updatedReferrals.filter(
+          (item) => item.status === "accepted"
+        ).length,
+        rejectedReferrals: updatedReferrals.filter(
+          (item) => item.status === "rejected"
+        ).length,
+        escalatedReferrals: updatedReferrals.filter(
+          (item) => item.status === "escalated"
+        ).length,
+      };
+
+      return {
+        ...currentData,
+        referrals: updatedReferrals,
+        summary,
+      };
+    });
+
+    setSelectedReferral(updatedReferral);
+  }
+
   const referrals = data?.referrals ?? [];
 
   const referringFacilities = useMemo(
     () => [...new Set(referrals.map((item) => item.referringFacility))],
-    [referrals],
+    [referrals]
   );
 
   const receivingFacilities = useMemo(
     () => [...new Set(referrals.map((item) => item.receivingFacility))],
-    [referrals],
+    [referrals]
   );
 
   const filteredReferrals = useMemo(() => {
@@ -148,6 +184,7 @@ function ReferralsPage() {
       <ReferralDetails
         referral={selectedReferral}
         onClose={() => setSelectedReferral(null)}
+        onReferralUpdated={handleReferralUpdated}
       />
     </main>
   );

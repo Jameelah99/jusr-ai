@@ -128,9 +128,9 @@ export const referringClinicianDashboardMock: ReferringClinicianDashboard = {
 };
 
 export const receivingClinicianDashboardMock: ReceivingClinicianDashboard = {
-  pendingReferrals: 5,
-  acceptedReferrals: 8,
-  urgentReferrals: 2,
+  pendingReferrals: 1,
+  acceptedReferrals: 1,
+  urgentReferrals: 1,
   referrals: [
     {
       id: "REF-003",
@@ -150,7 +150,17 @@ export const receivingClinicianDashboardMock: ReceivingClinicianDashboard = {
       referringFacility: "Demo Facility",
       referralReason: "Further specialist assessment",
       receivedAt: "9 Nov 2026, 9:15 AM",
-      status: "pending",
+      status: "rejected",
+    },
+    {
+      id: "REF-002",
+      patientLabel: "Patient D",
+      screeningType: "Cardiovascular",
+      priority: "normal",
+      referringFacility: "Demo Facility",
+      referralReason: "Further clinical review",
+      receivedAt: "7 Nov 2026, 11:15 AM",
+      status: "accepted",
     },
   ],
 };

@@ -13,11 +13,15 @@ import type { CaseTimelineEvent } from "../worklist.types";
 import type { WorklistCase } from "../worklist.types";
 import PriorityBadge from "./PriorityBadge";
 import { formatDateTime } from "../../../utils/formatDateTime";
+import { getEligiblePrimaryClinicians } from "../routing.service";
+import { useUser } from "../../../context/UserContext";
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
   onClose: () => void;
   availableOwners: string[];
+  onRouteUrgentCase: (caseId: string, clinician: string) => void;
+  onAcceptUrgentCase: (caseId: string) => void;
   onAssignOwner: (caseId: string, owner: string) => void;
   onRecordAssistedResponse: (caseItem: WorklistCase) => void;
   timelineEvents: CaseTimelineEvent[];
@@ -27,15 +31,24 @@ function CaseDetails({
   caseItem,
   onClose,
   availableOwners,
+  onRouteUrgentCase,
+  onAcceptUrgentCase,
   onAssignOwner,
   onRecordAssistedResponse,
   timelineEvents,
 }: CaseDetailsProps) {
+  const { activeUser } = useUser();
   const [selectedOwner, setSelectedOwner] = useState("");
+
+  const [selectedClinician, setSelectedClinician] = useState("");
 
   useEffect(() => {
     setSelectedOwner(caseItem?.assignedTo ?? "");
   }, [caseItem?.id, caseItem?.assignedTo]);
+
+  useEffect(() => {
+    setSelectedClinician("");
+  }, [caseItem?.id, caseItem?.specialty]);
 
   const drawerRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -166,6 +179,73 @@ function CaseDetails({
               <strong>{caseItem.screeningResult}</strong>
             </div>
           </section>
+
+          {caseItem.priority === "urgent" && caseItem.specialty && (
+            <section className="case-routing-panel">
+              <h3 className="case-section-title">Clinical specialty routing</h3>
+
+              <p>
+                Required specialty: <strong>{caseItem.specialty}</strong>
+              </p>
+
+              <p>
+                Routing status: <strong>{caseItem.routingStatus}</strong>
+              </p>
+
+              {caseItem.routingStatus === "awaiting_acceptance" &&
+                caseItem.assignedTo === activeUser.name &&
+                activeUser.role === "receiving_clinician" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Accept urgent case ${caseItem.id} assigned to ${caseItem.assignedTo}?`,
+                        )
+                      ) {
+                        onAcceptUrgentCase(caseItem.id);
+                      }
+                    }}
+                  >
+                    Accept case
+                  </button>
+                )}
+
+              <label htmlFor="clinical-routing-select">
+                Select eligible clinician
+              </label>
+
+              <select
+                id="clinical-routing-select"
+                value={selectedClinician}
+                onChange={(event) => setSelectedClinician(event.target.value)}
+              >
+                <option value="">Select a clinician</option>
+                {getEligiblePrimaryClinicians(caseItem).map((clinician) => (
+                  <option key={clinician} value={clinician}>
+                    {clinician}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                disabled={!selectedClinician}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Route ${caseItem.id} to ${selectedClinician} for clinical acceptance?`,
+                    )
+                  ) {
+                    onRouteUrgentCase(caseItem.id, selectedClinician);
+                    setSelectedClinician("");
+                  }
+                }}
+              >
+                Route to clinician
+              </button>
+            </section>
+          )}
 
           <section className="case-detail-section">
             <h3 className="case-section-title">

@@ -14,7 +14,9 @@ import PriorityQueue from "./components/PriorityQueue";
 import CareProgress from "./components/CareProgress";
 import ReferralOverview from "./components/ReferralOverview";
 import RecentActivity from "./components/RecentActivity";
-
+import ReferralDetails from "../referrals/components/ReferralDetails";
+import type { Referral } from "../referrals/referrals.types";
+import { getReferrals } from "../referrals/referralsService";
 import { useUser } from "../../context/UserContext";
 import { getDashboardSummary } from "../../services/api/dashboardService";
 
@@ -34,6 +36,10 @@ function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
+    null,
+  );
 
   async function loadDashboard(role = activeUser.role) {
     try {
@@ -55,6 +61,25 @@ function DashboardPage() {
   useEffect(() => {
     loadDashboard(activeUser.role);
   }, [activeUser.role]);
+
+  async function handleSelectReferral(referralId: string) {
+    try {
+      const response = await getReferrals();
+
+      const referral = response.referrals.find(
+        (item) => item.id === referralId,
+      );
+
+      if (!referral) {
+        setError("Referral details could not be found.");
+        return;
+      }
+
+      setSelectedReferral(referral);
+    } catch {
+      setError("Unable to load referral details.");
+    }
+  }
 
   if (loading) {
     return (
@@ -109,7 +134,21 @@ function DashboardPage() {
       )}
 
       {"pendingReferrals" in dashboard && (
-        <ReceivingClinicianDashboardView dashboard={dashboard} />
+        <ReceivingClinicianDashboardView
+          dashboard={dashboard}
+          onSelectReferral={handleSelectReferral}
+        />
+      )}
+
+      {selectedReferral && (
+        <ReferralDetails
+          referral={selectedReferral}
+          onClose={() => setSelectedReferral(null)}
+          onReferralUpdated={(updatedReferral) => {
+            setSelectedReferral(updatedReferral);
+            loadDashboard();
+          }}
+        />
       )}
     </main>
   );
@@ -212,7 +251,15 @@ function ReferringClinicianDashboardView({
             </div>
 
             <div className="dashboard-case-actions">
-              <span>{item.dueLabel}</span>
+              <span
+                className={`dashboard-due-label ${
+                  item.dueLabel.toLowerCase().includes("overdue")
+                    ? "overdue"
+                    : "normal"
+                }`}
+              >
+                {item.dueLabel}
+              </span>
 
               <button
                 type="button"
@@ -241,8 +288,10 @@ function ReferringClinicianDashboardView({
 
 function ReceivingClinicianDashboardView({
   dashboard,
+  onSelectReferral,
 }: {
   dashboard: ReceivingClinicianDashboard;
+  onSelectReferral: (referralId: string) => void;
 }) {
   return (
     <>
@@ -274,7 +323,19 @@ function ReceivingClinicianDashboardView({
         <h2>Incoming referrals</h2>
 
         {dashboard.referrals.map((referral) => (
-          <div className="dashboard-list-item" key={referral.id}>
+          <div
+            className="dashboard-list-item incoming-referral-item"
+            key={referral.id}
+            onClick={() => onSelectReferral(referral.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelectReferral(referral.id);
+              }
+            }}
+          >
             <div>
               <strong>
                 {referral.id} · {referral.patientLabel}

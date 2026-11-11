@@ -4,7 +4,8 @@ import type { UserRole } from "./UserContext";
 // Application sections
 export type AppPermission =
   | "dashboard"
-  | "worklist"
+  |   "worklist"
+  | "urgent_inbox"
   | "patients"
   | "referrals"
   | "consultations"
@@ -29,10 +30,11 @@ export const rolePermissions: Record<UserRole, AppPermission[]> = {
     "consultations",
   ],
 
-  receiving_clinician: [
+    receiving_clinician: [
     "dashboard",
     "referrals",
     "consultations",
+    "urgent_inbox",
   ],
 
   facility_administrator: [

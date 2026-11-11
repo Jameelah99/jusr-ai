@@ -826,3 +826,82 @@
     background: #fbfdfd;
   }
 }
+
+
+/* Referral decision actions */
+.referral-decision-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.referral-decision-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.referral-decision-actions button:first-child {
+  background: #009802;
+  color: #ffffff;
+}
+
+.referral-decision-actions button:first-child:hover:not(:disabled) {
+  background: #007d02;
+}
+
+.referral-decision-actions button:last-child {
+  background: #ffffff;
+  color: #c0392b;
+  border-color: #e5b8b4;
+}
+
+.referral-decision-actions button:last-child:hover:not(:disabled) {
+  background: #fff5f4;
+}
+
+.referral-decision-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+.referral-rejection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.referral-rejection-form textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.referral-rejection-form textarea:focus {
+  outline: none;
+  border-color: #009802;
+  box-shadow: 0 0 0 3px rgba(0, 152, 2, 0.1);
+}
+
+.referral-rejection-form p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}

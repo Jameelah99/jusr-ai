@@ -12,7 +12,12 @@ import type {
   WorklistResponse,
   CaseTimelineEvent,
 } from "./worklist.types";
-import { caseTimelineMock } from "./worklist.mock";
+import {
+  getDemoTimelineEvents,
+  updateDemoCase,
+  addDemoTimelineEvent,
+} from "./demoState";
+import { getEligiblePrimaryClinicians } from "./routing.service";
 
 function WorklistPage() {
   const [worklist, setWorklist] = useState<WorklistResponse | null>(null);
@@ -29,8 +34,9 @@ function WorklistPage() {
     assignedTo: "all",
   });
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-  const [timelineEvents, setTimelineEvents] =
-    useState<CaseTimelineEvent[]>(caseTimelineMock);
+  const [timelineEvents, setTimelineEvents] = useState<CaseTimelineEvent[]>(
+    () => getDemoTimelineEvents(),
+  );
 
   async function loadWorklist() {
     try {
@@ -244,52 +250,140 @@ function WorklistPage() {
             }
           }}
           availableOwners={availableOwners}
-          onAssignOwner={(caseId, owner) => {
+          onRouteUrgentCase={(caseId, clinician) => {
             const currentCase = cases.find((item) => item.id === caseId);
 
-            if (!currentCase) return;
+            if (!currentCase || currentCase.priority !== "urgent") return;
 
-            const previousOwner = currentCase.assignedTo;
-            const isReassignment = previousOwner !== null;
+            const eligibleClinicians =
+              getEligiblePrimaryClinicians(currentCase);
+
+            if (!eligibleClinicians.includes(clinician)) return;
 
             const now = new Date().toISOString();
 
-            // Update the case owner
-            setWorklist((previous) => {
-              if (!previous) return previous;
-
-              return {
-                ...previous,
-                cases: previous.cases.map((item) =>
-                  item.id === caseId
-                    ? {
-                        ...item,
-                        assignedTo: owner,
-                        lastUpdated: now,
-                      }
-                    : item,
-                ),
-              };
+            const updatedCase = updateDemoCase(caseId, {
+              assignedTo: clinician,
+              assignedClinicianSpecialty: currentCase.specialty,
+              routingStatus: "awaiting_acceptance",
+              lastUpdated: now,
             });
 
-            // Record the assignment activity
-            const newEvent: CaseTimelineEvent = {
-              id: `EVENT-${Date.now()}`,
+            if (!updatedCase) return;
+
+            setWorklist((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    cases: previous.cases.map((item) =>
+                      item.id === caseId ? updatedCase : item,
+                    ),
+                  }
+                : previous,
+            );
+
+            addDemoTimelineEvent({
+              id: `EVT-${Date.now()}`,
               caseId,
-              eventType: isReassignment ? "case_reassigned" : "case_assigned",
-              title: isReassignment
-                ? "Case owner reassigned"
-                : "Case owner assigned",
-              description: isReassignment
-                ? `Case ownership changed from ${previousOwner} to ${owner}.`
-                : `Case assigned to ${owner}.`,
+              eventType: "urgent_case_routed",
+              title: "Urgent case routed to specialist",
+              description: `Case routed to ${clinician} for ${currentCase.specialty} review. Awaiting acceptance.`,
               actor: "Demo Coordinator",
               actorRole: "Care Coordinator",
               timestamp: now,
-            };
+            });
 
-            setTimelineEvents((previous) => [newEvent, ...previous]);
+            setTimelineEvents(getDemoTimelineEvents());
           }}
+          onAcceptUrgentCase={(caseId) => {
+  const currentCase = cases.find((item) => item.id === caseId);
+
+  if (
+    !currentCase ||
+    currentCase.priority !== "urgent" ||
+    currentCase.routingStatus !== "awaiting_acceptance"
+  ) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  const updatedCase = updateDemoCase(caseId, {
+    routingStatus: "accepted",
+    status: "Notifying",
+    lastUpdated: now,
+  });
+
+  if (!updatedCase) return;
+
+  setWorklist((previous) =>
+    previous
+      ? {
+          ...previous,
+          cases: previous.cases.map((item) =>
+            item.id === caseId ? updatedCase : item
+          ),
+        }
+      : previous
+  );
+
+  addDemoTimelineEvent({
+    id: `EVT-${Date.now()}`,
+    caseId,
+    eventType: "urgent_case_accepted",
+    title: "Urgent case accepted",
+    description: `${currentCase.assignedTo} accepted the urgent ${currentCase.specialty} case.`,
+    actor: currentCase.assignedTo ?? "Receiving Clinician",
+    actorRole: "Receiving Clinician",
+    timestamp: now,
+  });
+
+  setTimelineEvents(getDemoTimelineEvents());
+}}
+          onAssignOwner={(caseId, owner) => {
+  const currentCase = cases.find((item) => item.id === caseId);
+
+  if (!currentCase) return;
+
+  const previousOwner = currentCase.assignedTo;
+  const isReassignment = previousOwner !== null;
+  const now = new Date().toISOString();
+
+  const updatedCase = updateDemoCase(caseId, {
+    assignedTo: owner,
+    lastUpdated: now,
+  });
+
+  if (!updatedCase) return;
+
+  setWorklist((previous) =>
+    previous
+      ? {
+          ...previous,
+          cases: previous.cases.map((item) =>
+            item.id === caseId ? updatedCase : item
+          ),
+        }
+      : previous
+  );
+
+  addDemoTimelineEvent({
+    id: `EVT-${Date.now()}`,
+    caseId,
+    eventType: isReassignment ? "case_reassigned" : "case_assigned",
+    title: isReassignment
+      ? "Case owner reassigned"
+      : "Case owner assigned",
+    description: isReassignment
+      ? `Case ownership changed from ${previousOwner} to ${owner}.`
+      : `Case assigned to ${owner}.`,
+    actor: "Demo Coordinator",
+    actorRole: "Care Coordinator",
+    timestamp: now,
+  });
+
+  setTimelineEvents(getDemoTimelineEvents());
+}}
           onRecordAssistedResponse={(caseItem) => {
             setSelectedCaseId(null);
 

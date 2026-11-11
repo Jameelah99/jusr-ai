@@ -1,25 +1,26 @@
 
 export type CasePriority = "urgent" | "high" | "normal";
 
+
 export interface WorklistCase {
   id: string;
   patientLabel: string;
   age: number;
   sex: string;
-
   screeningType: string;
   screeningResult: string;
-
   priority: CasePriority;
   status: string;
-
+  specialty: string | null;
   assignedTo: string | null;
+  assignedClinicianSpecialty: string | null;
+  routingStatus: "not_required" | "awaiting_acceptance" | "accepted" | "exception";
   facility: string;
-
   nextAction: string;
   dueDate: string | null;
   lastUpdated: string;
 }
+
 
 export interface CaseTimelineEvent {
   id: string;

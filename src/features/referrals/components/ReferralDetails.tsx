@@ -1,26 +1,135 @@
-
 import { useEffect, useState } from "react";
 import { X, Building2, UserRound, ClipboardList } from "lucide-react";
 import type { Referral } from "../referrals.types";
+import {
+  acceptReferral,
+  rejectReferral,
+  escalateReferral,
+} from "../referralsService";
+import { useUser } from "../../../context/UserContext";
 
 interface ReferralDetailsProps {
   referral: Referral | null;
   onClose: () => void;
+  onReferralUpdated: (referral: Referral) => void;
 }
 
 function ReferralDetails({
   referral,
   onClose,
+  onReferralUpdated,
 }: ReferralDetailsProps) {
+  const { activeUser } = useUser();
+
   const [showRejectionForm, setShowRejectionForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  const [showEscalationForm, setShowEscalationForm] = useState(false);
+  const [escalationReason, setEscalationReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     setShowRejectionForm(false);
     setRejectionReason("");
+    setIsSubmitting(false);
+    setFeedback(null);
+    setShowEscalationForm(false);
+    setEscalationReason("");
   }, [referral?.id]);
 
   if (!referral) return null;
+
+  const handleAccept = async () => {
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await acceptReferral(referral.id);
+
+      onReferralUpdated(response.referral);
+
+      setFeedback({
+        type: "success",
+        message: "Referral accepted successfully.",
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Unable to accept referral.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = rejectionReason.trim();
+
+    if (!reason) return;
+
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await rejectReferral(referral.id, { reason });
+
+      onReferralUpdated(response.referral);
+
+      setShowRejectionForm(false);
+      setRejectionReason("");
+
+      setFeedback({
+        type: "success",
+        message: "Referral rejected successfully.",
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Unable to reject referral.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEscalate = async () => {
+    const reason = escalationReason.trim();
+
+    if (!reason) return;
+
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await escalateReferral(referral.id, { reason });
+
+      onReferralUpdated(response.referral);
+
+      setShowEscalationForm(false);
+      setEscalationReason("");
+
+      setFeedback({
+        type: "success",
+        message: "Referral escalated successfully.",
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to escalate referral.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="referral-drawer-overlay" onClick={onClose}>
@@ -130,6 +239,13 @@ function ReferralDetails({
               </div>
             )}
 
+            {referral.escalationReason && (
+              <div className="referral-detail-field">
+                <span>Escalation reason</span>
+                <strong>{referral.escalationReason}</strong>
+              </div>
+            )}
+
             {referral.outcome && (
               <div className="referral-detail-field">
                 <span>Recorded outcome</span>
@@ -138,47 +254,149 @@ function ReferralDetails({
             )}
           </section>
 
-          {referral.status === "pending" && (
-            <section className="referral-detail-section">
-              <h3>Receiving clinician decision</h3>
-
-              {!showRejectionForm ? (
-                <button
-                  type="button"
-                  onClick={() => setShowRejectionForm(true)}
-                >
-                  Reject referral
-                </button>
-              ) : (
-                <div className="referral-rejection-form">
-                  <label htmlFor="referral-rejection-reason">
-                    Reason for rejection
-                  </label>
-
-                  <textarea
-                    id="referral-rejection-reason"
-                    value={rejectionReason}
-                    onChange={(event) =>
-                      setRejectionReason(event.target.value)
-                    }
-                    placeholder="Explain why this referral cannot be accepted..."
-                  />
-
-                  <p>
-                    Rejection requires a reason and must be recorded by an
-                    authorised receiving clinician.
-                  </p>
-
-                  <button
-                    type="button"
-                    disabled={!rejectionReason.trim()}
-                  >
-                    Confirm rejection
-                  </button>
-                </div>
-              )}
-            </section>
+          {feedback && (
+            <p
+              className={
+                feedback.type === "success"
+                  ? "success-message"
+                  : "error-message"
+              }
+              role="status"
+            >
+              {feedback.message}
+            </p>
           )}
+
+          {referral.status === "pending" &&
+            activeUser.role === "receiving_clinician" && (
+              <section className="referral-detail-section">
+                <h3>Receiving clinician decision</h3>
+
+                {!showRejectionForm && !showEscalationForm && (
+                  <div className="referral-decision-actions">
+                    <button
+                      type="button"
+                      onClick={handleAccept}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Processing..." : "Accept referral"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEscalationForm(false);
+                        setEscalationReason("");
+                        setShowRejectionForm(true);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Reject referral
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRejectionForm(false);
+                        setRejectionReason("");
+                        setShowEscalationForm(true);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Escalate referral
+                    </button>
+                  </div>
+                )}
+
+                {showRejectionForm && (
+                  <div className="referral-rejection-form">
+                    <label htmlFor="referral-rejection-reason">
+                      Reason for rejection
+                    </label>
+
+                    <textarea
+                      id="referral-rejection-reason"
+                      value={rejectionReason}
+                      onChange={(event) =>
+                        setRejectionReason(event.target.value)
+                      }
+                      placeholder="Explain why this referral cannot be accepted..."
+                      disabled={isSubmitting}
+                    />
+
+                    <p>
+                      Rejection requires a reason and must be recorded by an
+                      authorised receiving clinician.
+                    </p>
+
+                    <div className="referral-decision-actions">
+                      <button
+                        type="button"
+                        onClick={handleReject}
+                        disabled={!rejectionReason.trim() || isSubmitting}
+                      >
+                        {isSubmitting ? "Processing..." : "Confirm rejection"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRejectionForm(false);
+                          setRejectionReason("");
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {showEscalationForm && (
+                  <div className="referral-rejection-form">
+                    <label htmlFor="referral-escalation-reason">
+                      Reason for escalation
+                    </label>
+
+                    <textarea
+                      id="referral-escalation-reason"
+                      value={escalationReason}
+                      onChange={(event) =>
+                        setEscalationReason(event.target.value)
+                      }
+                      placeholder="Explain why this referral needs escalation..."
+                      disabled={isSubmitting}
+                    />
+
+                    <p>
+                      Escalation requires a reason and must be recorded by an
+                      authorised receiving clinician.
+                    </p>
+
+                    <div className="referral-decision-actions">
+                      <button
+                        type="button"
+                        onClick={handleEscalate}
+                        disabled={!escalationReason.trim() || isSubmitting}
+                      >
+                        {isSubmitting ? "Processing..." : "Confirm escalation"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEscalationForm(false);
+                          setEscalationReason("");
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
         </div>
 
         <div className="referral-drawer-footer">

@@ -1,4 +1,3 @@
-
 export type ReferralPriority = "urgent" | "high" | "normal";
 
 export type ReferralStatus =
@@ -31,6 +30,7 @@ export interface Referral {
   lastUpdated: string;
 
   rejectionReason: string | null;
+  escalationReason: string | null;
   outcome: string | null;
 }
 
@@ -76,4 +76,17 @@ export interface ReferralResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface ReferralActionResponse {
+  success: boolean;
+  referral: Referral;
+}
+
+export interface RejectReferralRequest {
+  reason: string;
+}
+
+export interface EscalateReferralRequest {
+  reason: string;
 }

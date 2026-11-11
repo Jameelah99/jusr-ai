@@ -1,4 +1,3 @@
-
 import WorklistPage from "./features/worklist/WorklistPage";
 import { Routes, Route } from "react-router-dom";
 import PatientLinkGate from "./features/patient/PatientLinkGate";
@@ -10,6 +9,8 @@ import PatientProfilePage from "./features/patients/PatientProfilePage";
 import ReferralsPage from "./features/referrals/ReferralsPage";
 import { UserProvider } from "./context/UserContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ConsultationsPage from "./features/consultations/ConsultationsPage";
+import UrgentInboxPage from "./features/worklist/UrgentInboxPage";
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -53,6 +54,11 @@ function App() {
             <Route path="worklist" element={<WorklistPage />} />
           </Route>
 
+          {/* Incoming Urgent Cases */}
+          <Route element={<ProtectedRoute permission="urgent_inbox" />}>
+            <Route path="urgent-inbox" element={<UrgentInboxPage />} />
+          </Route>
+
           {/* Patients */}
           <Route element={<ProtectedRoute permission="patients" />}>
             <Route path="patients" element={<PatientsPage />} />
@@ -69,11 +75,9 @@ function App() {
           </Route>
 
           {/* Consultations */}
+          {/* Consultations */}
           <Route element={<ProtectedRoute permission="consultations" />}>
-            <Route
-              path="consultations"
-              element={<PlaceholderPage title="Consultations" />}
-            />
+            <Route path="consultations" element={<ConsultationsPage />} />
           </Route>
 
           {/* Measures */}

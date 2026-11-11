@@ -712,6 +712,23 @@ p {
   .app-content {
     padding: 18px 12px;
   }
+
+    .app-layout,
+  .app-main,
+  .app-content {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-main {
+    overflow-x: clip;
+  }
+
+  .app-content > * {
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 

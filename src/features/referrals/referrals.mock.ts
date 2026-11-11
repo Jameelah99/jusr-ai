@@ -26,6 +26,7 @@ export const referralsMock: Referral[] = [
     responseDueAt: "2026-11-10T17:00:00",
     lastUpdated: "2026-11-07T11:00:00",
     rejectionReason: null,
+    escalationReason: null,
     outcome: null,
   },
   {
@@ -47,6 +48,7 @@ export const referralsMock: Referral[] = [
     responseDueAt: "2026-11-09T17:00:00",
     lastUpdated: "2026-11-08T09:30:00",
     rejectionReason: null,
+    escalationReason: null,
     outcome: null,
   },
   {
@@ -68,6 +70,7 @@ export const referralsMock: Referral[] = [
     responseDueAt: "2026-11-10T17:00:00",
     lastUpdated: "2026-11-09T10:30:00",
     rejectionReason: null,
+    escalationReason: null,
     outcome: null,
   },
 ];
