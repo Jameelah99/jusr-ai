@@ -11,24 +11,14 @@ import { UserProvider } from "./context/UserContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ConsultationsPage from "./features/consultations/ConsultationsPage";
 import UrgentInboxPage from "./features/worklist/UrgentInboxPage";
+import MeasuresPage from "./features/measures/MeasuresPage";
+import FacilitiesPage from "./features/facilities/FacilitiesPage";
+import HelpSupportPage from "./features/help-support/HelpSupportPage";
+import UserGuidePage from "./features/help-support/UserGuidePage";
+import ContactSupportPage from "./features/help-support/ContactSupportPage";
+import PrivacySecurityPage from "./features/help-support/PrivacySecurityPage";
+import SettingsPage from "./features/settings/SettingsPage";
 
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="page-container">
-      <div className="page-heading">
-        <div>
-          <h1>{title}</h1>
-          <p>Manage and monitor your {title.toLowerCase()}.</p>
-        </div>
-      </div>
-
-      <div className="dashboard-placeholder">
-        <h2>{title}</h2>
-        <p>This module is under development.</p>
-      </div>
-    </div>
-  );
-}
 
 function App() {
   return (
@@ -75,34 +65,33 @@ function App() {
           </Route>
 
           {/* Consultations */}
-          {/* Consultations */}
           <Route element={<ProtectedRoute permission="consultations" />}>
             <Route path="consultations" element={<ConsultationsPage />} />
           </Route>
 
           {/* Measures */}
           <Route element={<ProtectedRoute permission="measures" />}>
-            <Route
-              path="measures"
-              element={<PlaceholderPage title="Measures" />}
-            />
+            <Route path="measures" element={<MeasuresPage />} />
           </Route>
 
           {/* Facilities */}
           <Route element={<ProtectedRoute permission="facilities" />}>
-            <Route
-              path="facilities"
-              element={<PlaceholderPage title="Facilities" />}
-            />
+            <Route path="facilities" element={<FacilitiesPage />} />
           </Route>
 
           {/* Settings */}
           <Route element={<ProtectedRoute permission="settings" />}>
-            <Route
-              path="settings"
-              element={<PlaceholderPage title="Settings" />}
-            />
+            <Route element={<ProtectedRoute permission="settings" />}>
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Route>
+          <Route path="help-support" element={<HelpSupportPage />} />
+          <Route path="help-support/user-guide" element={<UserGuidePage />} />
+          <Route path="help-support/contact" element={<ContactSupportPage />} />
+          <Route
+            path="help-support/privacy-security"
+            element={<PrivacySecurityPage />}
+          />
         </Route>
       </Routes>
     </UserProvider>

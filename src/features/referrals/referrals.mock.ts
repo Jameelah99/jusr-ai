@@ -122,6 +122,55 @@ export const referralTimelineMock: ReferralTimelineEvent[] = [
   },
 ];
 
+const REFERRAL_STORAGE_KEY = "jusr-demo-referral-state";
+
+interface StoredReferralState {
+  referrals: Referral[];
+  timelineEvents: ReferralTimelineEvent[];
+}
+
+export function loadReferralDemoState(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const saved = localStorage.getItem(REFERRAL_STORAGE_KEY);
+    if (!saved) return;
+
+    const parsed = JSON.parse(saved) as StoredReferralState;
+
+    if (
+      Array.isArray(parsed.referrals) &&
+      Array.isArray(parsed.timelineEvents)
+    ) {
+      referralsMock.splice(0, referralsMock.length, ...parsed.referrals);
+      referralTimelineMock.splice(
+        0,
+        referralTimelineMock.length,
+        ...parsed.timelineEvents,
+      );
+    }
+  } catch {
+    // Keep the original mock data if saved data is unavailable or invalid.
+  }
+}
+
+export function saveReferralDemoState(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const state: StoredReferralState = {
+      referrals: referralsMock,
+      timelineEvents: referralTimelineMock,
+    };
+
+    localStorage.setItem(REFERRAL_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Persistence failure should not break the demo workflow.
+  }
+}
+
+loadReferralDemoState();
+
 export const referralSummaryMock: ReferralSummary = {
   totalReferrals: 3,
   pendingReferrals: 2,

@@ -7,19 +7,47 @@ import type {
   WorklistCase,
   WorklistResponse,
   CaseTimelineEvent,
+  CaseEvidenceRecord,
+  ClosureEvidenceItem,
 } from "./worklist.types";
 
+
+
 const STORAGE_KEY = "jusr-demo-worklist-state";
+
+const DEMO_DATA_CHANGED_EVENT = "jusr-demo-data-changed";
+
+export function notifyDemoDataChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(DEMO_DATA_CHANGED_EVENT));
+  }
+}
+
+export function subscribeToDemoDataChanges(
+  callback: () => void
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener(DEMO_DATA_CHANGED_EVENT, callback);
+
+  return () => {
+    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, callback);
+  };
+}
 
 interface DemoWorklistState {
   cases: WorklistCase[];
   timelineEvents: CaseTimelineEvent[];
+  evidenceRecords: CaseEvidenceRecord[];
 }
 
 function getInitialState(): DemoWorklistState {
   return {
     cases: worklistMock.cases.map((item) => ({ ...item })),
     timelineEvents: caseTimelineMock.map((event) => ({ ...event })),
+    evidenceRecords: [],
   };
 }
 
@@ -48,6 +76,7 @@ export function saveDemoWorklistState(
   state: DemoWorklistState
 ): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  notifyDemoDataChanged();
 }
 
 export function getDemoWorklistResponse(): WorklistResponse {
@@ -94,4 +123,35 @@ export function addDemoTimelineEvent(
 
 export function getDemoTimelineEvents(): CaseTimelineEvent[] {
   return getDemoWorklistState().timelineEvents;
+}
+
+export function getDemoEvidenceRecords(
+  caseId: string,
+): CaseEvidenceRecord[] {
+  return getDemoWorklistState().evidenceRecords.filter(
+    (record) => record.caseId === caseId,
+  );
+}
+
+export function addDemoEvidenceRecord(
+  record: CaseEvidenceRecord,
+): void {
+  const state = getDemoWorklistState();
+
+  state.evidenceRecords.push(record);
+
+  saveDemoWorklistState(state);
+}
+
+export function getClosureEvidenceChecklist(
+  caseId: string,
+): ClosureEvidenceItem[] {
+  return getDemoEvidenceRecords(caseId).map((record) => ({
+    id: record.id,
+    kind: record.kind,
+    label: record.title,
+    present: true,
+    sourceRecordId: record.id,
+    sourceDescription: record.description,
+  }));
 }

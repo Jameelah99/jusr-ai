@@ -1,4 +1,3 @@
-
 import {
   createContext,
   useContext,
@@ -25,6 +24,7 @@ export interface DemoUser {
   name: string;
   role: UserRole;
   facility: Facility;
+  authorisedToClose: boolean;
 }
 
 // Available demo facilities
@@ -46,30 +46,35 @@ export const demoUsers: DemoUser[] = [
     name: "Jane Doe",
     role: "coordinator",
     facility: demoFacilities[0],
+    authorisedToClose: false,
   },
   {
     id: "user-002",
     name: "Dr Williams",
     role: "referring_clinician",
     facility: demoFacilities[0],
+    authorisedToClose: true,
   },
   {
     id: "user-003",
     name: "Mary Johnson",
     role: "coordinator",
     facility: demoFacilities[1],
+    authorisedToClose: false,
   },
   {
     id: "user-004",
     name: "Dr Okafor",
     role: "receiving_clinician",
     facility: demoFacilities[1],
+    authorisedToClose: true,
   },
   {
     id: "user-005",
     name: "Facility Admin",
     role: "facility_administrator",
     facility: demoFacilities[0],
+    authorisedToClose: false,
   },
 ];
 

@@ -184,10 +184,17 @@ function AppSidebar({
 
         {/* SIDEBAR FOOTER */}
         <div className="sidebar-footer">
-          <button className="nav-item help-link">
+          <NavLink
+            to="/help-support"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `nav-item help-link ${isActive ? "nav-item-active" : ""}`
+            }
+            title={collapsed ? "Help & Support" : undefined}
+          >
             <HelpCircle size={19} />
             {!collapsed && <span>Help & Support</span>}
-          </button>
+          </NavLink>
 
           <button
             className="collapse-button desktop-only"

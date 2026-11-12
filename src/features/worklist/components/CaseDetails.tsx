@@ -9,15 +9,18 @@ import {
   PhoneCall,
 } from "lucide-react";
 import CaseTimeline from "./CaseTimeline";
-import type { CaseTimelineEvent } from "../worklist.types";
+import type { CaseTimelineEvent, ClosureType } from "../worklist.types";
 import type { WorklistCase } from "../worklist.types";
+import { useUser, type DemoUser } from "../../../context/UserContext";
 import PriorityBadge from "./PriorityBadge";
 import { formatDateTime } from "../../../utils/formatDateTime";
 import { getEligiblePrimaryClinicians } from "../routing.service";
-import { useUser } from "../../../context/UserContext";
+import { validateClosure } from "../closureValidation";
+import { getClosureEvidenceChecklist } from "../demoState";
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
+  activeUser: DemoUser;
   onClose: () => void;
   availableOwners: string[];
   onRouteUrgentCase: (caseId: string, clinician: string) => void;
@@ -25,11 +28,20 @@ interface CaseDetailsProps {
   onAssignOwner: (caseId: string, owner: string) => void;
   onRecordAssistedResponse: (caseItem: WorklistCase) => void;
   timelineEvents: CaseTimelineEvent[];
+  onCloseCase: (
+    caseId: string,
+    closureType: ClosureType,
+    reason: string,
+    evidence: import("../worklist.types").ClosureEvidenceItem[],
+    secondApproverId?: string,
+  ) => void;
 }
 
 function CaseDetails({
   caseItem,
+  activeUser,
   onClose,
+  onCloseCase,
   availableOwners,
   onRouteUrgentCase,
   onAcceptUrgentCase,
@@ -37,10 +49,37 @@ function CaseDetails({
   onRecordAssistedResponse,
   timelineEvents,
 }: CaseDetailsProps) {
-  const { activeUser } = useUser();
+  const { demoUsers } = useUser();
+
+  const authorisedStaff = demoUsers.filter((user) => user.authorisedToClose);
+
   const [selectedOwner, setSelectedOwner] = useState("");
 
   const [selectedClinician, setSelectedClinician] = useState("");
+
+  const canCloseCase = activeUser.authorisedToClose;
+
+  const isClosed = Boolean(caseItem?.closure || caseItem?.status === "Closed");
+
+  const [closureType, setClosureType] = useState<ClosureType>("care_confirmed");
+
+  const [closureReason, setClosureReason] = useState("");
+
+  const [secondApproverId, setSecondApproverId] = useState("");
+
+  const closureEvidence = caseItem
+    ? getClosureEvidenceChecklist(caseItem.id)
+    : [];
+
+  const closureValidation = caseItem
+    ? validateClosure(
+        caseItem,
+        closureType,
+        closureReason,
+        closureEvidence,
+        authorisedStaff.find((user) => user.id === secondApproverId)?.name,
+      )
+    : { canClose: false, missing: [], message: undefined };
 
   useEffect(() => {
     setSelectedOwner(caseItem?.assignedTo ?? "");
@@ -161,6 +200,13 @@ function CaseDetails({
               <PriorityBadge priority={caseItem.priority} />
               <span className="worklist-status">{caseItem.status}</span>
             </div>
+
+            {isClosed && (
+              <div className="case-detail-notice" role="status">
+                This case is closed and is now read-only. No further case
+                actions or workflow changes are permitted.
+              </div>
+            )}
           </section>
 
           <section className="case-detail-section">
@@ -192,7 +238,8 @@ function CaseDetails({
                 Routing status: <strong>{caseItem.routingStatus}</strong>
               </p>
 
-              {caseItem.routingStatus === "awaiting_acceptance" &&
+              {!isClosed &&
+                caseItem.routingStatus === "awaiting_acceptance" &&
                 caseItem.assignedTo === activeUser.name &&
                 activeUser.role === "receiving_clinician" && (
                   <button
@@ -209,41 +256,150 @@ function CaseDetails({
                   >
                     Accept case
                   </button>
-                )}
+              )}
 
-              <label htmlFor="clinical-routing-select">
-                Select eligible clinician
-              </label>
+              {!isClosed && (
+                <>
+                  <label htmlFor="clinical-routing-select">
+                    Select eligible clinician
+                  </label>
 
-              <select
-                id="clinical-routing-select"
-                value={selectedClinician}
-                onChange={(event) => setSelectedClinician(event.target.value)}
-              >
-                <option value="">Select a clinician</option>
-                {getEligiblePrimaryClinicians(caseItem).map((clinician) => (
-                  <option key={clinician} value={clinician}>
-                    {clinician}
+                  <select
+                    id="clinical-routing-select"
+                    value={selectedClinician}
+                    onChange={(event) =>
+                      setSelectedClinician(event.target.value)
+                    }
+                  >
+                    <option value="">Select a clinician</option>
+                    {getEligiblePrimaryClinicians(caseItem).map((clinician) => (
+                      <option key={clinician} value={clinician}>
+                        {clinician}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    disabled={!selectedClinician}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Route ${caseItem.id} to ${selectedClinician} for clinical acceptance?`,
+                        )
+                      ) {
+                        onRouteUrgentCase(caseItem.id, selectedClinician);
+                        setSelectedClinician("");
+                      }
+                    }}
+                  >
+                    Route to clinician
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
+          {canCloseCase && !caseItem.closure && (
+            <section className="case-detail-section">
+              <h3 className="case-section-title">Case closure</h3>
+
+              <div className="case-detail-field">
+                <label htmlFor="closure-type">Closure type</label>
+                <select
+                  id="closure-type"
+                  value={closureType}
+                  onChange={(event) => {
+                    setClosureType(event.target.value as ClosureType);
+                    setSecondApproverId("");
+                  }}
+                >
+                  <option value="care_confirmed">Care confirmed</option>
+                  <option value="not_actionable">Not actionable</option>
+                  <option value="no_further_care_needed">
+                    No further care needed
                   </option>
-                ))}
-              </select>
+                  <option value="patient_declined">Patient declined</option>
+                  <option value="unreachable">Unreachable</option>
+                  <option value="moved_or_transferred">
+                    Moved or transferred
+                  </option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
 
-              <button
-                type="button"
-                disabled={!selectedClinician}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Route ${caseItem.id} to ${selectedClinician} for clinical acceptance?`,
-                    )
-                  ) {
-                    onRouteUrgentCase(caseItem.id, selectedClinician);
-                    setSelectedClinician("");
-                  }
-                }}
-              >
-                Route to clinician
-              </button>
+              <div className="case-detail-field">
+                <label htmlFor="closure-reason">Closure reason</label>
+                <textarea
+                  id="closure-reason"
+                  value={closureReason}
+                  onChange={(event) => setClosureReason(event.target.value)}
+                  placeholder="Record the clinical decision and reason for closure..."
+                  rows={4}
+                />
+              </div>
+
+              {closureType === "other" && (
+                <div className="case-detail-field">
+                  <label htmlFor="closure-second-approver">
+                    Second authorised approver
+                  </label>
+
+                  <select
+                    id="closure-second-approver"
+                    value={secondApproverId}
+                    onChange={(event) =>
+                      setSecondApproverId(event.target.value)
+                    }
+                  >
+                    <option value="">Select an authorised staff member</option>
+
+                    {authorisedStaff
+                      .filter((user) => user.id !== activeUser.id)
+                      .map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="case-closure-evidence">
+                <strong>Supporting evidence</strong>
+
+                {closureEvidence.length === 0 ? (
+                  <p>
+                    No supporting evidence records are available for this case.
+                  </p>
+                ) : (
+                  <ul>
+                    {closureEvidence.map((item) => (
+                      <li key={item.id}>
+                        <span>{item.label}</span>
+                        <span>Available · Record: {item.sourceRecordId}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {closureValidation.missing.length > 0 && (
+                <div role="alert" className="case-closure-validation">
+                  <strong>Closure requirements not met:</strong>
+                  <ul>
+                    {closureValidation.missing.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {closureValidation.message && (
+                <p role="alert" className="case-closure-validation">
+                  {closureValidation.message}
+                </p>
+              )}
             </section>
           )}
 
@@ -258,55 +414,59 @@ function CaseDetails({
               <strong>{caseItem.assignedTo ?? "Unassigned"}</strong>
             </div>
 
-            <div className="case-owner-assignment">
-              <label htmlFor="case-owner-select">
-                {caseItem.assignedTo
-                  ? "Change case owner"
-                  : "Assign case owner"}
-              </label>
+            {!isClosed && (
+              <div className="case-owner-assignment">
+                <label htmlFor="case-owner-select">
+                  {caseItem.assignedTo
+                    ? "Change case owner"
+                    : "Assign case owner"}
+                </label>
 
-              <select
-                id="case-owner-select"
-                value={selectedOwner}
-                onChange={(event) => setSelectedOwner(event.target.value)}
-              >
-                <option value="">Select a staff member</option>
+                <select
+                  id="case-owner-select"
+                  value={selectedOwner}
+                  onChange={(event) => setSelectedOwner(event.target.value)}
+                >
+                  <option value="">Select a staff member</option>
 
-                {availableOwners.map((owner) => (
-                  <option key={owner} value={owner}>
-                    {owner}
-                  </option>
-                ))}
-              </select>
+                  {availableOwners.map((owner) => (
+                    <option key={owner} value={owner}>
+                      {owner}
+                    </option>
+                  ))}
+                </select>
 
+                <button
+                  type="button"
+                  className="case-owner-confirm"
+                  disabled={
+                    !selectedOwner || selectedOwner === caseItem.assignedTo
+                  }
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Assign ${selectedOwner} as the owner of ${caseItem.id}?`,
+                      )
+                    ) {
+                      onAssignOwner(caseItem.id, selectedOwner);
+                    }
+                  }}
+                >
+                  Confirm assignment
+                </button>
+              </div>
+            )}
+
+            {!isClosed && (
               <button
                 type="button"
-                className="case-owner-confirm"
-                disabled={
-                  !selectedOwner || selectedOwner === caseItem.assignedTo
-                }
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Assign ${selectedOwner} as the owner of ${caseItem.id}?`,
-                    )
-                  ) {
-                    onAssignOwner(caseItem.id, selectedOwner);
-                  }
-                }}
+                className="case-assisted-response-button"
+                onClick={() => onRecordAssistedResponse(caseItem)}
               >
-                Confirm assignment
+                <PhoneCall size={17} />
+                Record response on behalf of patient
               </button>
-            </div>
-
-            <button
-              type="button"
-              className="case-assisted-response-button"
-              onClick={() => onRecordAssistedResponse(caseItem)}
-            >
-              <PhoneCall size={17} />
-              Record response on behalf of patient
-            </button>
+            )}
 
             <div className="case-detail-field">
               <span>Next required action</span>
@@ -348,6 +508,37 @@ function CaseDetails({
         </div>
 
         <div className="case-drawer-footer">
+          {canCloseCase && !caseItem.closure && (
+            <button
+              type="button"
+              disabled={!closureValidation.canClose}
+              title={
+                !closureValidation.canClose
+                  ? "Complete all closure requirements before closing this case."
+                  : "Close case"
+              }
+              onClick={() => {
+                if (!caseItem || !closureValidation.canClose) return;
+
+                const confirmed = window.confirm(
+                  `Are you sure you want to close ${caseItem.id} as "${closureType}"? This action will be recorded in the audit timeline.`,
+                );
+
+                if (!confirmed) return;
+
+                onCloseCase(
+                  caseItem.id,
+                  closureType,
+                  closureReason,
+                  closureEvidence,
+                  secondApproverId || undefined,
+                );
+              }}
+            >
+              Close Case
+            </button>
+          )}
+
           <button
             type="button"
             className="case-drawer-secondary"

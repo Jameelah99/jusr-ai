@@ -11,15 +11,23 @@ import type {
   WorklistFilters as FilterValues,
   WorklistResponse,
   CaseTimelineEvent,
+  CaseClosureRecord,
+  CaseClosureRequest,
+  ClosureEvidenceItem,
+  ClosureType,
 } from "./worklist.types";
 import {
   getDemoTimelineEvents,
   updateDemoCase,
   addDemoTimelineEvent,
+  getClosureEvidenceChecklist,
 } from "./demoState";
 import { getEligiblePrimaryClinicians } from "./routing.service";
+import { useUser } from "../../context/UserContext";
+import { validateClosure } from "./closureValidation";
 
 function WorklistPage() {
+  const { activeUser, demoUsers } = useUser();
   const [worklist, setWorklist] = useState<WorklistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +125,115 @@ function WorklistPage() {
   }, [cases, location.search]);
 
   const selectedCase = cases.find((item) => item.id === selectedCaseId) ?? null;
+
+  const handleCloseCase = (
+    caseId: string,
+    closureType: ClosureType,
+    reason: string,
+    _submittedEvidence: ClosureEvidenceItem[],
+    secondApproverId?: string,
+  ) => {
+    const currentCase = cases.find((item) => item.id === caseId);
+
+    // Only authorised staff can close an open case.
+    if (!currentCase || currentCase.closure || !activeUser.authorisedToClose) {
+      return;
+    }
+
+    // Retrieve evidence from the stored records, not from the UI.
+    const evidence = getClosureEvidenceChecklist(caseId);
+
+    const selectedApprover = secondApproverId
+      ? demoUsers.find((user) => user.id === secondApproverId)
+      : undefined;
+
+    const validSecondApprover =
+      selectedApprover &&
+      selectedApprover.authorisedToClose &&
+      selectedApprover.id !== activeUser.id
+        ? selectedApprover
+        : undefined;
+
+    const closureRequest: CaseClosureRequest = {
+      closureType,
+      reason,
+      evidence,
+      ...(secondApproverId ? { secondApproverStaffId: secondApproverId } : {}),
+    };
+
+    // Independently validate the closure before saving.
+    const validation = validateClosure(
+      currentCase,
+      closureRequest.closureType,
+      closureRequest.reason,
+      closureRequest.evidence,
+      validSecondApprover?.name,
+    );
+
+    if (!validation.canClose) {
+      window.alert(
+        [validation.message, ...validation.missing].filter(Boolean).join("\n"),
+      );
+      return;
+    }
+
+    // Create the permanent closure audit record.
+    const now = new Date().toISOString();
+
+    const closureRecord: CaseClosureRecord = {
+      id: `CLOSE-${Date.now()}`,
+      caseId,
+      closureType,
+      reason: reason.trim(),
+      evidence,
+      closedBy: activeUser.name,
+      closedByStaffId: activeUser.id,
+      closedByRole: activeUser.role,
+      closedAt: now,
+      ...(closureType === "other" && validSecondApprover
+        ? {
+            secondApprover: validSecondApprover.name,
+            secondApproverStaffId: validSecondApprover.id,
+          }
+        : {}),
+    };
+
+    // Persist the closed case.
+    const updatedCase = updateDemoCase(caseId, {
+      status: "Closed",
+      closure: closureRecord,
+      closedAt: now,
+      lastUpdated: now,
+    });
+
+    if (!updatedCase) return;
+
+    // Refresh the visible worklist.
+    setWorklist((previous) =>
+      previous
+        ? {
+            ...previous,
+            cases: previous.cases.map((item) =>
+              item.id === caseId ? updatedCase : item,
+            ),
+          }
+        : previous,
+    );
+
+    // Record the closure in the audit timeline.
+    addDemoTimelineEvent({
+      id: `EVT-${Date.now()}`,
+      caseId,
+      eventType: "case_closed",
+      title: "Case closed",
+      description: `Case closed as ${closureType}. Reason: ${reason.trim()}`,
+      actor: activeUser.name,
+      actorRole: activeUser.role,
+      timestamp: now,
+    });
+
+    setTimelineEvents(getDemoTimelineEvents());
+  };
 
   const availableOwners = ["Dr. Williams", "Nurse Johnson", "Dr. Adams"];
 
@@ -233,6 +350,8 @@ function WorklistPage() {
       {selectedCase !== null && (
         <CaseDetails
           caseItem={selectedCase}
+          activeUser={activeUser}
+          onCloseCase={handleCloseCase}
           timelineEvents={timelineEvents.filter(
             (event) => event.caseId === selectedCase?.id,
           )}
@@ -253,7 +372,14 @@ function WorklistPage() {
           onRouteUrgentCase={(caseId, clinician) => {
             const currentCase = cases.find((item) => item.id === caseId);
 
-            if (!currentCase || currentCase.priority !== "urgent") return;
+            if (
+              !currentCase ||
+              currentCase.closure ||
+              currentCase.status === "Closed" ||
+              currentCase.priority !== "urgent"
+            ) {
+              return;
+            }
 
             const eligibleClinicians =
               getEligiblePrimaryClinicians(currentCase);
@@ -296,95 +422,105 @@ function WorklistPage() {
             setTimelineEvents(getDemoTimelineEvents());
           }}
           onAcceptUrgentCase={(caseId) => {
-  const currentCase = cases.find((item) => item.id === caseId);
+            const currentCase = cases.find((item) => item.id === caseId);
 
-  if (
-    !currentCase ||
-    currentCase.priority !== "urgent" ||
-    currentCase.routingStatus !== "awaiting_acceptance"
-  ) {
-    return;
-  }
+            if (
+              !currentCase ||
+              currentCase.closure ||
+              currentCase.status === "Closed" ||
+              currentCase.priority !== "urgent" ||
+              currentCase.routingStatus !== "awaiting_acceptance"
+            ) {
+              return;
+            }
 
-  const now = new Date().toISOString();
+            const now = new Date().toISOString();
 
-  const updatedCase = updateDemoCase(caseId, {
-    routingStatus: "accepted",
-    status: "Notifying",
-    lastUpdated: now,
-  });
+            const updatedCase = updateDemoCase(caseId, {
+              routingStatus: "accepted",
+              status: "Notifying",
+              lastUpdated: now,
+            });
 
-  if (!updatedCase) return;
+            if (!updatedCase) return;
 
-  setWorklist((previous) =>
-    previous
-      ? {
-          ...previous,
-          cases: previous.cases.map((item) =>
-            item.id === caseId ? updatedCase : item
-          ),
-        }
-      : previous
-  );
+            setWorklist((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    cases: previous.cases.map((item) =>
+                      item.id === caseId ? updatedCase : item,
+                    ),
+                  }
+                : previous,
+            );
 
-  addDemoTimelineEvent({
-    id: `EVT-${Date.now()}`,
-    caseId,
-    eventType: "urgent_case_accepted",
-    title: "Urgent case accepted",
-    description: `${currentCase.assignedTo} accepted the urgent ${currentCase.specialty} case.`,
-    actor: currentCase.assignedTo ?? "Receiving Clinician",
-    actorRole: "Receiving Clinician",
-    timestamp: now,
-  });
+            addDemoTimelineEvent({
+              id: `EVT-${Date.now()}`,
+              caseId,
+              eventType: "urgent_case_accepted",
+              title: "Urgent case accepted",
+              description: `${currentCase.assignedTo} accepted the urgent ${currentCase.specialty} case.`,
+              actor: currentCase.assignedTo ?? "Receiving Clinician",
+              actorRole: "Receiving Clinician",
+              timestamp: now,
+            });
 
-  setTimelineEvents(getDemoTimelineEvents());
-}}
+            setTimelineEvents(getDemoTimelineEvents());
+          }}
           onAssignOwner={(caseId, owner) => {
-  const currentCase = cases.find((item) => item.id === caseId);
+            const currentCase = cases.find((item) => item.id === caseId);
 
-  if (!currentCase) return;
+            if (
+              !currentCase ||
+              currentCase.closure ||
+              currentCase.status === "Closed"
+            ) {
+              return;
+            }
 
-  const previousOwner = currentCase.assignedTo;
-  const isReassignment = previousOwner !== null;
-  const now = new Date().toISOString();
+            const previousOwner = currentCase.assignedTo;
+            const isReassignment = previousOwner !== null;
+            const now = new Date().toISOString();
 
-  const updatedCase = updateDemoCase(caseId, {
-    assignedTo: owner,
-    lastUpdated: now,
-  });
+            const updatedCase = updateDemoCase(caseId, {
+              assignedTo: owner,
+              lastUpdated: now,
+            });
 
-  if (!updatedCase) return;
+            if (!updatedCase) return;
 
-  setWorklist((previous) =>
-    previous
-      ? {
-          ...previous,
-          cases: previous.cases.map((item) =>
-            item.id === caseId ? updatedCase : item
-          ),
-        }
-      : previous
-  );
+            setWorklist((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    cases: previous.cases.map((item) =>
+                      item.id === caseId ? updatedCase : item,
+                    ),
+                  }
+                : previous,
+            );
 
-  addDemoTimelineEvent({
-    id: `EVT-${Date.now()}`,
-    caseId,
-    eventType: isReassignment ? "case_reassigned" : "case_assigned",
-    title: isReassignment
-      ? "Case owner reassigned"
-      : "Case owner assigned",
-    description: isReassignment
-      ? `Case ownership changed from ${previousOwner} to ${owner}.`
-      : `Case assigned to ${owner}.`,
-    actor: "Demo Coordinator",
-    actorRole: "Care Coordinator",
-    timestamp: now,
-  });
+            addDemoTimelineEvent({
+              id: `EVT-${Date.now()}`,
+              caseId,
+              eventType: isReassignment ? "case_reassigned" : "case_assigned",
+              title: isReassignment
+                ? "Case owner reassigned"
+                : "Case owner assigned",
+              description: isReassignment
+                ? `Case ownership changed from ${previousOwner} to ${owner}.`
+                : `Case assigned to ${owner}.`,
+              actor: "Demo Coordinator",
+              actorRole: "Care Coordinator",
+              timestamp: now,
+            });
 
-  setTimelineEvents(getDemoTimelineEvents());
-}}
+            setTimelineEvents(getDemoTimelineEvents());
+          }}
           onRecordAssistedResponse={(caseItem) => {
+            if (caseItem.closure || caseItem.status === "Closed") return;
+
             setSelectedCaseId(null);
 
             navigate(

@@ -19,7 +19,7 @@ import type { Referral } from "../referrals/referrals.types";
 import { getReferrals } from "../referrals/referralsService";
 import { useUser } from "../../context/UserContext";
 import { getDashboardSummary } from "../../services/api/dashboardService";
-
+import { subscribeToDemoDataChanges } from "../worklist/demoState";
 import type {
   DashboardData,
   DashboardSummary,
@@ -27,8 +27,9 @@ import type {
   ReceivingClinicianDashboard,
   FacilityAdministratorDashboard,
 } from "./dashboard.types";
-
 import "./dashboard.css";
+
+
 
 function DashboardPage() {
   const { activeUser } = useUser();
@@ -58,9 +59,15 @@ function DashboardPage() {
     }
   }
 
-  useEffect(() => {
+ useEffect(() => {
+  loadDashboard(activeUser.role);
+
+  const unsubscribe = subscribeToDemoDataChanges(() => {
     loadDashboard(activeUser.role);
-  }, [activeUser.role]);
+  });
+
+  return unsubscribe;
+}, [activeUser.role]);
 
   async function handleSelectReferral(referralId: string) {
     try {

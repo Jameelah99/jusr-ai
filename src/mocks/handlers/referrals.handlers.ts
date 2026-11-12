@@ -3,11 +3,35 @@ import {
   referralResponseMock,
   referralsMock,
   referralTimelineMock,
+  saveReferralDemoState,
 } from "../../features/referrals/referrals.mock";
+import { notifyDemoDataChanged } from "../../features/worklist/demoState";
 
 export const referralsHandlers = [
   http.get("/api/referrals", () => {
-    return HttpResponse.json(referralResponseMock);
+    const summary = {
+      totalReferrals: referralsMock.length,
+      pendingReferrals: referralsMock.filter(
+        (item) => item.status === "pending",
+      ).length,
+      acceptedReferrals: referralsMock.filter(
+        (item) => item.status === "accepted",
+      ).length,
+      rejectedReferrals: referralsMock.filter(
+        (item) => item.status === "rejected",
+      ).length,
+      escalatedReferrals: referralsMock.filter(
+        (item) => item.status === "escalated",
+      ).length,
+    };
+
+    return HttpResponse.json({
+      ...referralResponseMock,
+      summary,
+      referrals: referralsMock,
+      total: referralsMock.length,
+      totalPages: Math.ceil(referralsMock.length / 10),
+    });
   }),
 
   http.post("/api/referrals/:id/accept", ({ params }) => {
@@ -41,6 +65,9 @@ export const referralsHandlers = [
       actorRole: "Receiving Clinician",
       timestamp: referral.lastUpdated,
     });
+
+    saveReferralDemoState();
+    notifyDemoDataChanged();
 
     return HttpResponse.json({
       success: true,
@@ -91,6 +118,9 @@ export const referralsHandlers = [
       timestamp: referral.lastUpdated,
     });
 
+    saveReferralDemoState();
+    notifyDemoDataChanged();
+
     return HttpResponse.json({
       success: true,
       referral,
@@ -139,6 +169,9 @@ export const referralsHandlers = [
       actorRole: "Receiving Clinician",
       timestamp: referral.lastUpdated,
     });
+
+    saveReferralDemoState();
+    notifyDemoDataChanged();
 
     return HttpResponse.json({
       success: true,
