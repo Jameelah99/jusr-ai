@@ -3,6 +3,11 @@ export type CasePriority = "urgent" | "high" | "normal";
 
 export interface WorklistCase {
   id: string;
+  patientId?: string;
+   // Access control
+  facilityId?: string;
+  ownerStaffId?: string | null;
+  participantStaffIds?: string[];
   patientLabel: string;
   age: number;
   sex: string;
@@ -59,7 +64,7 @@ export interface WorklistResponse {
   totalPages: number;
 }
 
-export type CaseFlag = "DATA_MISSING";
+export type CaseFlag = "DATA_MISSING" | "OVERDUE";
 
 export type ClosureType =
   | "care_confirmed"
@@ -101,6 +106,37 @@ export interface CaseEvidenceRecord {
   sourceReference?: string;
 }
 
+
+export type ContactAttemptRoute = "phone" | "message";
+
+export type ContactAttemptOutcome =
+  | "no_answer"
+  | "no_response"
+  | "reached_patient"
+  | "failed"
+  | "other";
+
+export interface ContactAttemptRecord {
+  id: string;
+  caseId: string;
+  route: ContactAttemptRoute;
+  attemptedAt: string;
+  outcome: ContactAttemptOutcome;
+  notes?: string;
+  recordedBy: string;
+  recordedByStaffId: string;
+  recordedByRole: string;
+  recordedAt: string;
+}
+
+export interface CreateContactAttemptRequest {
+  route: ContactAttemptRoute;
+  attemptedAt: string;
+  outcome: ContactAttemptOutcome;
+  notes?: string;
+}
+
+
 export interface CaseClosureRecord {
   id: string;
   caseId: string;
@@ -120,4 +156,31 @@ export interface CaseClosureRequest {
   reason: string;
   evidence: ClosureEvidenceItem[];
   secondApproverStaffId?: string;
+}
+
+
+export type DelayReasonCode =
+  | "patient_unreachable"
+  | "patient_did_not_understand"
+  | "referral_declined"
+  | "no_slot_available"
+  | "result_or_data_missing"
+  | "patient_moved"
+  | "other";
+
+export interface CaseDelayRecord {
+  id: string;
+  caseId: string;
+  flag: "OVERDUE";
+  reasonCode: DelayReasonCode;
+  explanation?: string;
+  recordedBy: string;
+  recordedByStaffId: string;
+  recordedByRole: string;
+  recordedAt: string;
+}
+
+export interface CreateCaseDelayRequest {
+  reasonCode: DelayReasonCode;
+  explanation?: string;
 }

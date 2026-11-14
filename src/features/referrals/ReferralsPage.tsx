@@ -1,5 +1,5 @@
-
 import { useEffect, useMemo, useState } from "react";
+import { useUser } from "../../context/UserContext";
 import { AlertCircle } from "lucide-react";
 import { getReferrals } from "./referralsService";
 import type {
@@ -14,11 +14,12 @@ import ReferralFilters from "./components/ReferralFilters";
 import ReferralTable from "./components/ReferralTable";
 
 function ReferralsPage() {
+  const { activeUser } = useUser();
   const [data, setData] = useState<ReferralResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
-    null
+    null,
   );
 
   const [filters, setFilters] = useState<FilterValues>({
@@ -38,7 +39,7 @@ function ReferralsPage() {
       setData(response);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to load referrals."
+        err instanceof Error ? err.message : "Unable to load referrals.",
       );
     } finally {
       setLoading(false);
@@ -54,22 +55,22 @@ function ReferralsPage() {
       if (!currentData) return currentData;
 
       const updatedReferrals = currentData.referrals.map((item) =>
-        item.id === updatedReferral.id ? updatedReferral : item
+        item.id === updatedReferral.id ? updatedReferral : item,
       );
 
       const summary = {
         totalReferrals: updatedReferrals.length,
         pendingReferrals: updatedReferrals.filter(
-          (item) => item.status === "pending"
+          (item) => item.status === "pending",
         ).length,
         acceptedReferrals: updatedReferrals.filter(
-          (item) => item.status === "accepted"
+          (item) => item.status === "accepted",
         ).length,
         rejectedReferrals: updatedReferrals.filter(
-          (item) => item.status === "rejected"
+          (item) => item.status === "rejected",
         ).length,
         escalatedReferrals: updatedReferrals.filter(
-          (item) => item.status === "escalated"
+          (item) => item.status === "escalated",
         ).length,
       };
 
@@ -83,16 +84,60 @@ function ReferralsPage() {
     setSelectedReferral(updatedReferral);
   }
 
-  const referrals = data?.referrals ?? [];
+  const referrals = useMemo(() => {
+    const allReferrals = data?.referrals ?? [];
+
+    if (activeUser.role === "facility_administrator") {
+      return [];
+    }
+
+    if (activeUser.role === "coordinator") {
+      if (activeUser.facility.name === "Demo Facility") {
+        return allReferrals.filter(
+          (referral) => referral.referringFacility === activeUser.facility.name,
+        );
+      }
+
+      if (activeUser.facility.name === "Central Specialist Hospital") {
+        return allReferrals.filter(
+          (referral) => referral.receivingFacility === activeUser.facility.name,
+        );
+      }
+
+      return [];
+    }
+
+    if (activeUser.role === "referring_clinician") {
+      return allReferrals.filter(
+        (referral) =>
+          referral.referringClinician
+            .toLowerCase()
+            .replace(/\./g, "")
+            .trim() === activeUser.name.toLowerCase().replace(/\./g, "").trim(),
+      );
+    }
+
+    if (activeUser.role === "receiving_clinician") {
+      return allReferrals.filter(
+        (referral) =>
+          referral.receivingClinician
+            ?.toLowerCase()
+            .replace(/\./g, "")
+            .trim() === activeUser.name.toLowerCase().replace(/\./g, "").trim(),
+      );
+    }
+
+    return [];
+  }, [data, activeUser]);
 
   const referringFacilities = useMemo(
     () => [...new Set(referrals.map((item) => item.referringFacility))],
-    [referrals]
+    [referrals],
   );
 
   const receivingFacilities = useMemo(
     () => [...new Set(referrals.map((item) => item.receivingFacility))],
-    [referrals]
+    [referrals],
   );
 
   const filteredReferrals = useMemo(() => {
@@ -167,7 +212,23 @@ function ReferralsPage() {
         </div>
       </div>
 
-      <ReferralStats summary={data.summary} />
+      <ReferralStats
+        summary={{
+          totalReferrals: referrals.length,
+          pendingReferrals: referrals.filter(
+            (item) => item.status === "pending",
+          ).length,
+          acceptedReferrals: referrals.filter(
+            (item) => item.status === "accepted",
+          ).length,
+          rejectedReferrals: referrals.filter(
+            (item) => item.status === "rejected",
+          ).length,
+          escalatedReferrals: referrals.filter(
+            (item) => item.status === "escalated",
+          ).length,
+        }}
+      />
 
       <ReferralFilters
         filters={filters}

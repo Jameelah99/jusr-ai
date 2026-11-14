@@ -9,14 +9,29 @@ import {
   PhoneCall,
 } from "lucide-react";
 import CaseTimeline from "./CaseTimeline";
-import type { CaseTimelineEvent, ClosureType } from "../worklist.types";
+import type {
+  CaseTimelineEvent,
+  ClosureType,
+  ContactAttemptRecord,
+  ContactAttemptRoute,
+  ContactAttemptOutcome,
+  CaseDelayRecord,
+  DelayReasonCode,
+} from "../worklist.types";
 import type { WorklistCase } from "../worklist.types";
 import { useUser, type DemoUser } from "../../../context/UserContext";
 import PriorityBadge from "./PriorityBadge";
 import { formatDateTime } from "../../../utils/formatDateTime";
 import { getEligiblePrimaryClinicians } from "../routing.service";
 import { validateClosure } from "../closureValidation";
-import { getClosureEvidenceChecklist } from "../demoState";
+import {
+  getClosureEvidenceChecklist,
+  getDemoContactAttempts,
+  addDemoContactAttempt,
+  getDemoCaseDelayRecords,
+  addDemoCaseDelayRecord,
+} from "../demoState";
+import "./delay-followup.css";
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
@@ -67,6 +82,24 @@ function CaseDetails({
 
   const [secondApproverId, setSecondApproverId] = useState("");
 
+  const [contactAttempts, setContactAttempts] = useState<
+    ContactAttemptRecord[]
+  >([]);
+  const [contactRoute, setContactRoute] =
+    useState<ContactAttemptRoute>("phone");
+  const [contactOutcome, setContactOutcome] =
+    useState<ContactAttemptOutcome>("no_answer");
+  const [contactAttemptedAt, setContactAttemptedAt] = useState("");
+  const [contactNotes, setContactNotes] = useState("");
+  const [contactAttemptError, setContactAttemptError] = useState("");
+
+  const [delayRecords, setDelayRecords] = useState<CaseDelayRecord[]>([]);
+  const [delayReasonCode, setDelayReasonCode] = useState<DelayReasonCode>(
+    "patient_unreachable",
+  );
+  const [delayExplanation, setDelayExplanation] = useState("");
+  const [delayFollowupError, setDelayFollowupError] = useState("");
+
   const closureEvidence = caseItem
     ? getClosureEvidenceChecklist(caseItem.id)
     : [];
@@ -78,8 +111,16 @@ function CaseDetails({
         closureReason,
         closureEvidence,
         authorisedStaff.find((user) => user.id === secondApproverId)?.name,
+        {
+          contactAttempts,
+        },
       )
-    : { canClose: false, missing: [], message: undefined };
+    : {
+        canClose: false,
+        missing: [],
+        checklist: [],
+        message: undefined,
+      };
 
   useEffect(() => {
     setSelectedOwner(caseItem?.assignedTo ?? "");
@@ -88,6 +129,29 @@ function CaseDetails({
   useEffect(() => {
     setSelectedClinician("");
   }, [caseItem?.id, caseItem?.specialty]);
+
+  useEffect(() => {
+    if (!caseItem) {
+      setContactAttempts([]);
+      return;
+    }
+
+    setContactAttempts(getDemoContactAttempts(caseItem.id));
+    setContactAttemptError("");
+  }, [caseItem?.id]);
+
+  useEffect(() => {
+    if (!caseItem) {
+      setDelayRecords([]);
+      setDelayFollowupError("");
+      return;
+    }
+
+    setDelayRecords(getDemoCaseDelayRecords(caseItem.id));
+    setDelayReasonCode("patient_unreachable");
+    setDelayExplanation("");
+    setDelayFollowupError("");
+  }, [caseItem?.id]);
 
   const drawerRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -143,6 +207,85 @@ function CaseDetails({
       previousActiveElement?.focus();
     };
   }, [caseItem]);
+
+  function handleRecordContactAttempt() {
+    if (!caseItem || isClosed) return;
+
+    if (!contactAttemptedAt) {
+      setContactAttemptError("Select when the contact attempt occurred.");
+      return;
+    }
+
+    const attempt: ContactAttemptRecord = {
+      id: `ATT-${Date.now()}`,
+      caseId: caseItem.id,
+      route: contactRoute,
+      attemptedAt: new Date(contactAttemptedAt).toISOString(),
+      outcome: contactOutcome,
+      notes: contactNotes.trim(),
+      recordedBy: activeUser.name,
+      recordedByStaffId: activeUser.id,
+      recordedByRole: activeUser.role,
+      recordedAt: new Date().toISOString(),
+    };
+
+    try {
+      addDemoContactAttempt(attempt);
+      setContactAttempts(getDemoContactAttempts(caseItem.id));
+      setContactAttemptedAt("");
+      setContactNotes("");
+      setContactOutcome("no_answer");
+      setContactAttemptError("");
+    } catch (error) {
+      setContactAttemptError(
+        error instanceof Error
+          ? error.message
+          : "Unable to record contact attempt.",
+      );
+    }
+  }
+
+  function handleRecordDelayFollowup() {
+    if (!caseItem || isClosed) return;
+
+    if (!caseItem.flags?.includes("OVERDUE")) {
+      setDelayFollowupError(
+        "A reason for delay can only be recorded for an overdue case.",
+      );
+      return;
+    }
+
+    if (delayReasonCode === "other" && !delayExplanation.trim()) {
+      setDelayFollowupError("Please explain the reason for selecting Other.");
+      return;
+    }
+
+    const record: CaseDelayRecord = {
+      id: `DELAY-${Date.now()}`,
+      caseId: caseItem.id,
+      flag: "OVERDUE",
+      reasonCode: delayReasonCode,
+      explanation: delayExplanation.trim() || undefined,
+      recordedBy: activeUser.name,
+      recordedByStaffId: activeUser.id,
+      recordedByRole: activeUser.role,
+      recordedAt: new Date().toISOString(),
+    };
+
+    try {
+      addDemoCaseDelayRecord(record);
+      setDelayRecords(getDemoCaseDelayRecords(caseItem.id));
+      setDelayExplanation("");
+      setDelayReasonCode("patient_unreachable");
+      setDelayFollowupError("");
+    } catch (error) {
+      setDelayFollowupError(
+        error instanceof Error
+          ? error.message
+          : "Unable to record the reason for delay.",
+      );
+    }
+  }
 
   if (!caseItem) return null;
 
@@ -226,6 +369,99 @@ function CaseDetails({
             </div>
           </section>
 
+          {caseItem.flags?.includes("OVERDUE") && !isClosed && (
+            <section className="case-detail-section case-delay-followup">
+              <h3 className="case-section-title">Reason for delay</h3>
+
+              <p>
+                This case is overdue. Record the reason for the delay before
+                proceeding with its follow-up.
+              </p>
+
+              <div className="case-detail-field">
+                <label htmlFor="delay-reason-code">Reason for delay</label>
+                <select
+                  id="delay-reason-code"
+                  value={delayReasonCode}
+                  onChange={(event) =>
+                    setDelayReasonCode(event.target.value as DelayReasonCode)
+                  }
+                >
+                  <option value="patient_unreachable">
+                    Patient unreachable
+                  </option>
+                  <option value="patient_did_not_understand">
+                    Patient did not understand
+                  </option>
+                  <option value="referral_declined">Referral declined</option>
+                  <option value="no_slot_available">No slot available</option>
+                  <option value="result_or_data_missing">
+                    Result or data missing
+                  </option>
+                  <option value="patient_moved">Patient moved</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {delayReasonCode === "other" && (
+                <div className="case-detail-field">
+                  <label htmlFor="delay-explanation">
+                    Explanation (required)
+                  </label>
+                  <textarea
+                    id="delay-explanation"
+                    rows={3}
+                    value={delayExplanation}
+                    onChange={(event) =>
+                      setDelayExplanation(event.target.value)
+                    }
+                    placeholder="Explain the reason for the delay..."
+                  />
+                </div>
+              )}
+
+              {delayFollowupError && (
+                <p role="alert" className="case-closure-validation">
+                  {delayFollowupError}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleRecordDelayFollowup}
+                disabled={
+                  delayReasonCode === "other" && !delayExplanation.trim()
+                }
+              >
+                Record delay follow-up
+              </button>
+
+              <div>
+                <strong>
+                  Recorded delay follow-ups ({delayRecords.length})
+                </strong>
+
+                {delayRecords.length === 0 ? (
+                  <p>No delay follow-ups recorded yet.</p>
+                ) : (
+                  <ul>
+                    {delayRecords.map((record) => (
+                      <li key={record.id}>
+                        <strong>{record.reasonCode.replace(/_/g, " ")}</strong>
+                        {record.explanation && <p>{record.explanation}</p>}
+                        <small>
+                          Recorded by {record.recordedBy} (
+                          {record.recordedByRole}){" — "}
+                          {new Date(record.recordedAt).toLocaleString("en-GB")}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          )}
+
           {caseItem.priority === "urgent" && caseItem.specialty && (
             <section className="case-routing-panel">
               <h3 className="case-section-title">Clinical specialty routing</h3>
@@ -256,7 +492,7 @@ function CaseDetails({
                   >
                     Accept case
                   </button>
-              )}
+                )}
 
               {!isClosed && (
                 <>
@@ -272,7 +508,7 @@ function CaseDetails({
                     }
                   >
                     <option value="">Select a clinician</option>
-                    {getEligiblePrimaryClinicians(caseItem).map((clinician) => (
+                    {getEligiblePrimaryClinicians(caseItem, demoUsers).map((clinician) => (
                       <option key={clinician} value={clinician}>
                         {clinician}
                       </option>
@@ -339,6 +575,123 @@ function CaseDetails({
                 />
               </div>
 
+              {closureType === "unreachable" && (
+                <div className="case-closure-evidence">
+                  <strong>Contact attempt log</strong>
+
+                  <p>
+                    Record each phone or message attempt separately. These
+                    records do not replace the required clinician decision.
+                  </p>
+
+                  <div className="case-detail-field">
+                    <label htmlFor="contact-route">Contact route</label>
+                    <select
+                      id="contact-route"
+                      value={contactRoute}
+                      onChange={(event) =>
+                        setContactRoute(
+                          event.target.value as ContactAttemptRoute,
+                        )
+                      }
+                    >
+                      <option value="phone">Phone</option>
+                      <option value="message">Message</option>
+                    </select>
+                  </div>
+
+                  <div className="case-detail-field">
+                    <label htmlFor="contact-attempted-at">
+                      Date and time attempted
+                    </label>
+                    <input
+                      id="contact-attempted-at"
+                      type="datetime-local"
+                      value={contactAttemptedAt}
+                      onChange={(event) =>
+                        setContactAttemptedAt(event.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="case-detail-field">
+                    <label htmlFor="contact-outcome">Outcome</label>
+                    <select
+                      id="contact-outcome"
+                      value={contactOutcome}
+                      onChange={(event) =>
+                        setContactOutcome(
+                          event.target.value as ContactAttemptOutcome,
+                        )
+                      }
+                    >
+                      <option value="no_answer">No answer</option>
+                      <option value="no_response">No response</option>
+                      <option value="reached_patient">Reached patient</option>
+                      <option value="failed">Attempt failed</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="case-detail-field">
+                    <label htmlFor="contact-notes">Notes</label>
+                    <textarea
+                      id="contact-notes"
+                      rows={2}
+                      value={contactNotes}
+                      onChange={(event) => setContactNotes(event.target.value)}
+                      placeholder="Add details about the attempt..."
+                    />
+                  </div>
+
+                  {contactAttemptError && (
+                    <p role="alert" className="case-closure-validation">
+                      {contactAttemptError}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={!contactAttemptedAt}
+                    onClick={handleRecordContactAttempt}
+                  >
+                    Record contact attempt
+                  </button>
+
+                  <div>
+                    <strong>
+                      Recorded attempts ({contactAttempts.length})
+                    </strong>
+
+                    {contactAttempts.length === 0 ? (
+                      <p>No contact attempts recorded yet.</p>
+                    ) : (
+                      <ul>
+                        {contactAttempts.map((attempt) => (
+                          <li key={attempt.id}>
+                            <strong>
+                              {attempt.route === "phone" ? "Phone" : "Message"}
+                            </strong>
+                            {" — "}
+                            {attempt.outcome.replace(/_/g, " ")}
+                            <p>
+                              {new Date(attempt.attemptedAt).toLocaleString(
+                                "en-GB",
+                              )}
+                            </p>
+                            {attempt.notes && <p>{attempt.notes}</p>}
+                            <small>
+                              Recorded by {attempt.recordedBy} (
+                              {attempt.recordedByRole})
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {closureType === "other" && (
                 <div className="case-detail-field">
                   <label htmlFor="closure-second-approver">
@@ -366,40 +719,70 @@ function CaseDetails({
               )}
 
               <div className="case-closure-evidence">
-                <strong>Supporting evidence</strong>
+                <strong>Evidence checklist</strong>
 
-                {closureEvidence.length === 0 ? (
+                {closureValidation.checklist.length === 0 ? (
                   <p>
-                    No supporting evidence records are available for this case.
+                    No supporting evidence is required for this closure type.
                   </p>
                 ) : (
                   <ul>
-                    {closureEvidence.map((item) => (
-                      <li key={item.id}>
-                        <span>{item.label}</span>
-                        <span>Available · Record: {item.sourceRecordId}</span>
+                    {closureValidation.checklist.map((item) => (
+                      <li key={item.label}>
+                        <div>
+                          <strong>{item.label}</strong>
+                          {item.satisfied && item.supportingRecord && (
+                            <p>
+                              Record: {item.supportingRecord.sourceRecordId}
+                              {item.supportingRecord.sourceDescription
+                                ? ` — ${item.supportingRecord.sourceDescription}`
+                                : ""}
+                            </p>
+                          )}
+                        </div>
+
+                        <span
+                          className={
+                            item.satisfied
+                              ? "closure-evidence-available"
+                              : "closure-evidence-missing"
+                          }
+                        >
+                          {item.satisfied ? "Available" : "Missing"}
+                        </span>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              {closureValidation.missing.length > 0 && (
-                <div role="alert" className="case-closure-validation">
-                  <strong>Closure requirements not met:</strong>
-                  <ul>
-                    {closureValidation.missing.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {(() => {
+                const evidenceLabels = closureValidation.checklist.map(
+                  (item) => item.label,
+                );
 
-              {closureValidation.message && (
-                <p role="alert" className="case-closure-validation">
-                  {closureValidation.message}
-                </p>
-              )}
+                const otherMissing = closureValidation.missing.filter(
+                  (item) => !evidenceLabels.includes(item),
+                );
+
+                return otherMissing.length > 0 ? (
+                  <div role="alert" className="case-closure-validation">
+                    <strong>Other closure requirements not met:</strong>
+                    <ul>
+                      {otherMissing.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null;
+              })()}
+
+              {closureValidation.message &&
+                closureValidation.missing.length === 0 && (
+                  <p role="alert" className="case-closure-validation">
+                    {closureValidation.message}
+                  </p>
+                )}
             </section>
           )}
 
@@ -511,6 +894,7 @@ function CaseDetails({
           {canCloseCase && !caseItem.closure && (
             <button
               type="button"
+              className="case-close-button"
               disabled={!closureValidation.canClose}
               title={
                 !closureValidation.canClose

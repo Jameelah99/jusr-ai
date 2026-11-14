@@ -1,4 +1,3 @@
-
 import { http, HttpResponse } from "msw";
 
 import {
@@ -35,7 +34,7 @@ function formatDueDate(dueDate: string | null): string {
   dueDay.setHours(0, 0, 0, 0);
 
   const difference = Math.round(
-    (dueDay.getTime() - today.getTime()) / 86400000
+    (dueDay.getTime() - today.getTime()) / 86400000,
   );
 
   if (difference < 0) {
@@ -48,12 +47,22 @@ function formatDueDate(dueDate: string | null): string {
   return `Due in ${difference} days`;
 }
 
-function getCoordinatorDashboard(): DashboardSummary {
-  const { cases } = getDemoWorklistState();
-  const timelineEvents = getDemoTimelineEvents();
+function getCoordinatorDashboard(facilityId: string): DashboardSummary {
+  const facilityName =
+    facilityId === "central-specialist"
+      ? "Central Specialist Hospital"
+      : "Demo Facility";
+
+  const { cases: allCases } = getDemoWorklistState();
+
+  const cases = allCases.filter((item) => item.facility === facilityName);
+
+  const timelineEvents = getDemoTimelineEvents().filter((event) =>
+    cases.some((item) => item.id === event.caseId),
+  );
 
   const activeCases = cases.filter(
-    (item) => !item.status.toLowerCase().includes("closed")
+    (item) => !item.status.toLowerCase().includes("closed"),
   );
 
   const overdueCases = activeCases.filter((item) => {
@@ -97,14 +106,14 @@ function getCoordinatorDashboard(): DashboardSummary {
       label: "Patient notification",
       count: activeCases.filter(
         (item) =>
-          !["Awaiting action", "Awaiting ownership"].includes(item.status)
+          !["Awaiting action", "Awaiting ownership"].includes(item.status),
       ).length,
       percentage: 0,
     },
     {
       label: "Confirmatory testing",
       count: activeCases.filter(
-        (item) => item.status === "Confirmatory testing"
+        (item) => item.status === "Confirmatory testing",
       ).length,
       percentage: 0,
     },
@@ -113,7 +122,7 @@ function getCoordinatorDashboard(): DashboardSummary {
       count: activeCases.filter(
         (item) =>
           item.status.toLowerCase().includes("consultation") ||
-          item.nextAction.toLowerCase().includes("clinical consultation")
+          item.nextAction.toLowerCase().includes("clinical consultation"),
       ).length,
       percentage: 0,
     },
@@ -125,7 +134,7 @@ function getCoordinatorDashboard(): DashboardSummary {
     {
       label: "Documented closure",
       count: cases.filter((item) =>
-        item.status.toLowerCase().includes("closed")
+        item.status.toLowerCase().includes("closed"),
       ).length,
       percentage: 0,
     },
@@ -153,8 +162,7 @@ function getCoordinatorDashboard(): DashboardSummary {
   ]
     .sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() -
-        new Date(a.timestamp).getTime()
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     )
     .slice(0, 5)
     .map((event) => ({
@@ -172,13 +180,10 @@ function getCoordinatorDashboard(): DashboardSummary {
   return {
     stats: {
       activeCases: activeCases.length,
-      urgentCases: activeCases.filter(
-        (item) => item.priority === "urgent"
-      ).length,
+      urgentCases: activeCases.filter((item) => item.priority === "urgent")
+        .length,
       overdueCases: overdueCases.length,
-      unassignedCases: activeCases.filter(
-        (item) => !item.assignedTo
-      ).length,
+      unassignedCases: activeCases.filter((item) => !item.assignedTo).length,
     },
     priorityCases,
     careProgress,
@@ -193,8 +198,12 @@ export const dashboardHandlers = [
     const role = url.searchParams.get("role");
 
     switch (role) {
-      case "coordinator":
-        return HttpResponse.json(getCoordinatorDashboard());
+      case "coordinator": {
+        const facilityId =
+          url.searchParams.get("facilityId") ?? "demo-facility";
+
+        return HttpResponse.json(getCoordinatorDashboard(facilityId));
+      }
 
       case "referring_clinician":
         return HttpResponse.json(referringClinicianDashboardMock);
@@ -202,22 +211,21 @@ export const dashboardHandlers = [
       case "receiving_clinician": {
         const incomingReferrals = referralsMock.filter(
           (referral) =>
-            referral.receivingFacility === "Central Specialist Hospital"
+            referral.receivingFacility === "Central Specialist Hospital",
         );
 
         const dashboardData: ReceivingClinicianDashboard = {
           pendingReferrals: incomingReferrals.filter(
-            (referral) => referral.status === "pending"
+            (referral) => referral.status === "pending",
           ).length,
 
           acceptedReferrals: incomingReferrals.filter(
-            (referral) => referral.status === "accepted"
+            (referral) => referral.status === "accepted",
           ).length,
 
           urgentReferrals: incomingReferrals.filter(
             (referral) =>
-              referral.priority === "urgent" &&
-              referral.status === "pending"
+              referral.priority === "urgent" && referral.status === "pending",
           ).length,
 
           referrals: incomingReferrals.map((referral) => ({
@@ -227,16 +235,13 @@ export const dashboardHandlers = [
             priority: referral.priority,
             referringFacility: referral.referringFacility,
             referralReason: referral.referralReason,
-            receivedAt: new Date(referral.createdAt).toLocaleString(
-              "en-GB",
-              {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              }
-            ),
+            receivedAt: new Date(referral.createdAt).toLocaleString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            }),
             status: referral.status,
           })),
         };
@@ -250,7 +255,7 @@ export const dashboardHandlers = [
       default:
         return HttpResponse.json(
           { message: "Invalid dashboard role." },
-          { status: 400 }
+          { status: 400 },
         );
     }
   }),

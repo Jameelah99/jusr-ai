@@ -1,12 +1,16 @@
 
 import type { WorklistResponse } from "../../features/worklist/worklist.types";
 
-export async function getWorklist(): Promise<WorklistResponse> {
-  const response = await fetch("/api/worklist");
+export async function getWorklist(
+  facilityId: string,
+): Promise<WorklistResponse> {
+  const response = await fetch(
+    `/api/worklist?facilityId=${encodeURIComponent(facilityId)}`,
+  );
 
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch worklist: ${response.status}`
+      `Failed to fetch worklist: ${response.status}`,
     );
   }
 

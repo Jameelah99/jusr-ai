@@ -15,37 +15,62 @@ import { getPatientProfile } from "./patientProfileService";
 import type { PatientProfileData } from "./patient-profile.types";
 import "./patient-profile.css";
 import { formatDateTime } from "../../utils/formatDateTime";
+import { useUser } from "../../context/UserContext";
 
 function PatientProfilePage() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-
+  const { activeUser } = useUser();
   const [profile, setProfile] = useState<PatientProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadProfile() {
-      try {
-        setLoading(true);
-        setError(null);
+  let cancelled = false;
 
-        if (!patientId) {
-          setProfile(null);
-          return;
-        }
+  async function loadProfile() {
+    setLoading(true);
+    setProfile(null);
+    setError(null);
 
-        const data = await getPatientProfile(patientId);
-        setProfile(data);
-      } catch {
+    if (!patientId) {
+      setLoading(false);
+      navigate("/patients", { replace: true });
+      return;
+    }
+
+    try {
+      const data = await getPatientProfile(
+        patientId,
+        activeUser.facility.id,
+      );
+
+      if (cancelled) return;
+
+      if (!data) {
+        setProfile(null);
+        navigate("/patients", { replace: true });
+        return;
+      }
+
+      setProfile(data);
+    } catch {
+      if (!cancelled) {
         setError("Unable to load patient profile.");
-      } finally {
+      }
+    } finally {
+      if (!cancelled) {
         setLoading(false);
       }
     }
+  }
 
-    loadProfile();
-  }, [patientId]);
+  void loadProfile();
+
+  return () => {
+    cancelled = true;
+  };
+}, [patientId, activeUser.facility.id, navigate]);
 
   if (loading) {
     return (
@@ -317,13 +342,6 @@ function PatientProfilePage() {
         </div>
       </section>
 
-      <div className="patients-demo-notice">
-        <strong>Demonstration data</strong>
-        <p>
-          This profile contains synthetic patient information and simulated case
-          records. It is not connected to a healthcare facility.
-        </p>
-      </div>
     </main>
   );
 }

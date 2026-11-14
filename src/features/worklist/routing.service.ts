@@ -9,7 +9,12 @@ export function getSpecialtyRoutingPool(specialty: string) {
 }
 
 export function getEligiblePrimaryClinicians(
-  caseRecord: WorklistCase
+  caseRecord: WorklistCase,
+  staff: {
+    name: string;
+    role: string;
+    specialty?: string;
+  }[],
 ): string[] {
   if (caseRecord.priority !== "urgent" || !caseRecord.specialty) {
     return [];
@@ -17,7 +22,16 @@ export function getEligiblePrimaryClinicians(
 
   const pool = getSpecialtyRoutingPool(caseRecord.specialty);
 
-  return pool?.primaryClinicians ?? [];
+  if (!pool) return [];
+
+  return pool.primaryClinicians.filter((clinicianName) =>
+    staff.some(
+      (user) =>
+        user.name === clinicianName &&
+        user.role === "receiving_clinician" &&
+        user.specialty === caseRecord.specialty,
+    ),
+  );
 }
 
 export function getBackupClinician(

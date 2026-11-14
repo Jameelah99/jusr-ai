@@ -5,12 +5,14 @@ import type { Patient } from "./patients.types";
 import "./patients.css";
 import PatientsTable from "./components/PatientsTable";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../../context/UserContext";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { activeUser } = useUser();
   const [search, setSearch] = useState("");
   const [facility, setFacility] = useState("all");
   const [sex, setSex] = useState<"all" | "Male" | "Female">("all");
@@ -20,7 +22,7 @@ function PatientsPage() {
       setLoading(true);
       setError(null);
 
-      const data = await getPatients();
+      const data = await getPatients(activeUser.facility.name);
       setPatients(data);
     } catch {
       setError("Unable to load patient records.");
@@ -30,8 +32,8 @@ function PatientsPage() {
   }
 
   useEffect(() => {
-    loadPatients();
-  }, []);
+  loadPatients();
+}, [activeUser.facility.name]);
 
   const facilities = useMemo(
     () => [...new Set(patients.map((patient) => patient.facility))],
@@ -170,14 +172,6 @@ function PatientsPage() {
           />
         )}
       </section>
-
-      <div className="patients-demo-notice">
-        <strong>Demonstration data</strong>
-        <p>
-          These patient records are synthetic and are not connected to a
-          healthcare facility.
-        </p>
-      </div>
     </main>
   );
 }

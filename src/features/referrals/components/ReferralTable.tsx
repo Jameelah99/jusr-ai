@@ -1,4 +1,5 @@
 import { Eye, ArrowUpRight } from "lucide-react";
+import { useUser } from "../../../context/UserContext";
 import type { Referral } from "../referrals.types";
 
 interface ReferralTableProps {
@@ -6,10 +7,14 @@ interface ReferralTableProps {
   onViewReferral: (referral: Referral) => void;
 }
 
-function ReferralTable({
-  referrals,
-  onViewReferral,
-}: ReferralTableProps) {
+function ReferralTable({ referrals, onViewReferral }: ReferralTableProps) {
+  const { activeUser } = useUser();
+
+  const isIncomingView =
+    activeUser.role === "receiving_clinician" ||
+    (activeUser.role === "coordinator" &&
+      activeUser.facility.name === "Central Specialist Hospital");
+
   if (!referrals.length) {
     return (
       <div className="referral-empty">
@@ -27,8 +32,12 @@ function ReferralTable({
             <th>Referral</th>
             <th>Patient / Case</th>
             <th>Priority</th>
-            <th>Receiving facility</th>
-            <th>Receiving clinician</th>
+            <th>
+              {isIncomingView ? "Referring facility" : "Receiving facility"}
+            </th>
+            <th>
+              {isIncomingView ? "Referring clinician" : "Receiving clinician"}
+            </th>
             <th>Status</th>
             <th>Action</th>
           </tr>
@@ -39,16 +48,12 @@ function ReferralTable({
             <tr key={referral.id}>
               <td>
                 <strong>{referral.id}</strong>
-                <span className="referral-muted">
-                  {referral.screeningType}
-                </span>
+                <span className="referral-muted">{referral.screeningType}</span>
               </td>
 
               <td>
                 <strong>{referral.patientLabel}</strong>
-                <span className="referral-muted">
-                  {referral.caseId}
-                </span>
+                <span className="referral-muted">{referral.caseId}</span>
               </td>
 
               <td>
@@ -59,10 +64,16 @@ function ReferralTable({
                 </span>
               </td>
 
-              <td>{referral.receivingFacility}</td>
+              <td>
+                {isIncomingView
+                  ? referral.referringFacility
+                  : referral.receivingFacility}
+              </td>
 
               <td>
-                {referral.receivingClinician ?? "Awaiting assignment"}
+                {isIncomingView
+                  ? referral.referringClinician
+                  : (referral.receivingClinician ?? "Awaiting assignment")}
               </td>
 
               <td>

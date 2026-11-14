@@ -21,6 +21,7 @@ import {
   updateDemoCase,
   addDemoTimelineEvent,
   getClosureEvidenceChecklist,
+  getDemoContactAttempts,
 } from "./demoState";
 import { getEligiblePrimaryClinicians } from "./routing.service";
 import { useUser } from "../../context/UserContext";
@@ -51,7 +52,7 @@ function WorklistPage() {
       setLoading(true);
       setError(null);
 
-      const data = await getWorklist();
+      const data = await getWorklist(activeUser.facility.id);
       setWorklist(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load worklist.");
@@ -109,7 +110,42 @@ function WorklistPage() {
     });
   }, [location.key, location.pathname, location.state, navigate]);
 
-  const cases = worklist?.cases ?? [];
+  const cases = useMemo(() => {
+  if (activeUser.role === "facility_administrator") {
+    return [];
+  }
+
+  return (worklist?.cases ?? []).filter(
+    (item) =>
+      item.facilityId === activeUser.facility.id ||
+      item.ownerStaffId === activeUser.id ||
+      item.participantStaffIds?.includes(activeUser.id),
+  );
+}, [worklist?.cases, activeUser]);
+
+const summary = useMemo(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const openCases = cases.filter(
+    (item) => !item.closure && item.status !== "Closed",
+  );
+
+  return {
+    totalCases: cases.length,
+    urgentCases: openCases.filter(
+      (item) => item.priority === "urgent",
+    ).length,
+    overdueCases: openCases.filter(
+      (item) =>
+        item.dueDate &&
+        new Date(`${item.dueDate}T00:00:00`) < today,
+    ).length,
+    unassignedCases: openCases.filter(
+      (item) => item.assignedTo === null,
+    ).length,
+  };
+}, [cases]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -168,6 +204,9 @@ function WorklistPage() {
       closureRequest.reason,
       closureRequest.evidence,
       validSecondApprover?.name,
+      {
+        contactAttempts: getDemoContactAttempts(caseId),
+      },
     );
 
     if (!validation.canClose) {
@@ -221,12 +260,21 @@ function WorklistPage() {
     );
 
     // Record the closure in the audit timeline.
+
+    // Record the closure in the audit timeline.
     addDemoTimelineEvent({
       id: `EVT-${Date.now()}`,
       caseId,
       eventType: "case_closed",
       title: "Case closed",
-      description: `Case closed as ${closureType}. Reason: ${reason.trim()}`,
+      description: [
+        `Case closed as ${closureType}. Reason: ${reason.trim()}`,
+        ...(closureType === "other" && validSecondApprover
+          ? [
+              `Second approval: ${validSecondApprover.name} (${validSecondApprover.role}).`,
+            ]
+          : []),
+      ].join(" "),
       actor: activeUser.name,
       actorRole: activeUser.role,
       timestamp: now,
@@ -332,7 +380,7 @@ function WorklistPage() {
         </div>
       </div>
 
-      <WorklistStats summary={worklist.summary} />
+      <WorklistStats summary={summary} />
 
       <WorklistFilters
         filters={filters}
@@ -381,8 +429,10 @@ function WorklistPage() {
               return;
             }
 
-            const eligibleClinicians =
-              getEligiblePrimaryClinicians(currentCase);
+            const eligibleClinicians = getEligiblePrimaryClinicians(
+              currentCase,
+              demoUsers,
+            );
 
             if (!eligibleClinicians.includes(clinician)) return;
 
@@ -460,9 +510,9 @@ function WorklistPage() {
               caseId,
               eventType: "urgent_case_accepted",
               title: "Urgent case accepted",
-              description: `${currentCase.assignedTo} accepted the urgent ${currentCase.specialty} case.`,
-              actor: currentCase.assignedTo ?? "Receiving Clinician",
-              actorRole: "Receiving Clinician",
+              description: `${activeUser.name} accepted the urgent ${currentCase.specialty} case.`,
+              actor: activeUser.name,
+              actorRole: activeUser.role,
               timestamp: now,
             });
 
@@ -480,6 +530,10 @@ function WorklistPage() {
             }
 
             const previousOwner = currentCase.assignedTo;
+
+            // Do not record an event if ownership has not changed.
+            if (previousOwner === owner) return;
+
             const isReassignment = previousOwner !== null;
             const now = new Date().toISOString();
 
@@ -511,8 +565,8 @@ function WorklistPage() {
               description: isReassignment
                 ? `Case ownership changed from ${previousOwner} to ${owner}.`
                 : `Case assigned to ${owner}.`,
-              actor: "Demo Coordinator",
-              actorRole: "Care Coordinator",
+              actor: activeUser.name,
+              actorRole: activeUser.role,
               timestamp: now,
             });
 

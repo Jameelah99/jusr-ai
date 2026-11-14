@@ -10,7 +10,7 @@ export interface SpecialtyRoutingPool {
 export const specialtyRoutingConfig: SpecialtyRoutingPool[] = [
   {
     specialty: "Endocrinology",
-    primaryClinicians: ["Dr. Williams"],
+    primaryClinicians: ["Dr Okafor"],
     backupClinician: "Dr. Adams",
     urgentAcceptanceLimitHours: 2,
     backupEscalationLimitHours: 2,

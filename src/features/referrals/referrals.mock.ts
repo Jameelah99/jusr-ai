@@ -15,8 +15,8 @@ export const referralsMock: Referral[] = [
     priority: "high",
     referringFacility: "Demo Facility",
     receivingFacility: "Central Specialist Hospital",
-    referringClinician: "Nurse Johnson",
-    receivingClinician: null,
+    referringClinician: "Dr Williams",
+    receivingClinician: "Dr Okafor",
     referralReason:
       "Positive hypertension screening result requiring specialist assessment.",
     clinicalSummary:
@@ -83,7 +83,7 @@ export const referralTimelineMock: ReferralTimelineEvent[] = [
     title: "Referral submitted",
     description:
       "Referral submitted to Central Specialist Hospital for specialist assessment.",
-    actor: "Nurse Johnson",
+    actor: "Dr Williams",
     actorRole: "Referring clinician",
     timestamp: "2026-11-07T11:00:00",
   },

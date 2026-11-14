@@ -23,6 +23,7 @@ export interface DemoUser {
   id: string;
   name: string;
   role: UserRole;
+  specialty?: string;
   facility: Facility;
   authorisedToClose: boolean;
 }
@@ -63,12 +64,13 @@ export const demoUsers: DemoUser[] = [
     authorisedToClose: false,
   },
   {
-    id: "user-004",
-    name: "Dr Okafor",
-    role: "receiving_clinician",
-    facility: demoFacilities[1],
-    authorisedToClose: true,
-  },
+  id: "user-004",
+  name: "Dr Okafor",
+  role: "receiving_clinician",
+  specialty: "Endocrinology",
+  facility: demoFacilities[1],
+  authorisedToClose: true,
+},
   {
     id: "user-005",
     name: "Facility Admin",

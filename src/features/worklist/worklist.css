@@ -539,6 +539,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 14px;
+  margin: 16px 0;
   color: var(--color-info);
   background: var(--color-info-bg);
   border-radius: var(--radius-md);
@@ -550,7 +551,7 @@
 
 .case-detail-notice p {
   color: inherit;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .case-drawer-footer {
@@ -820,4 +821,600 @@
 .case-routing-panel button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+
+
+/* =========================================
+   JUSR AI — CASE CLOSURE EVIDENCE & VALIDATION
+========================================= */
+
+/* Evidence checklist container */
+
+.case-detail-section > .case-closure-evidence:last-of-type {
+  margin-top: 18px;
+}
+
+.case-closure-evidence {
+  padding: 16px;
+  background: #F8FAFC;
+  border: 1px solid #E5EAF0;
+  border-radius: 12px;
+}
+
+.case-closure-evidence > strong {
+  display: block;
+  margin-bottom: 13px;
+  color: #26364A;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Checklist rows */
+
+.case-closure-evidence ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.case-closure-evidence li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 1px solid #E8EDF2;
+  border-radius: 9px;
+}
+
+.case-closure-evidence li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.case-closure-evidence li strong {
+  display: block;
+  color: #344256;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-transform: none;
+}
+
+.case-closure-evidence li p {
+  margin-top: 5px;
+  color: #718096;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Evidence status badges */
+
+.closure-evidence-available,
+.closure-evidence-missing {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.closure-evidence-available {
+  color: #087A3D;
+  background: #E7F6ED;
+}
+
+.closure-evidence-missing {
+  color: #B42318;
+  background: #FEF0EF;
+}
+
+/* Empty checklist message */
+
+.case-closure-evidence > p {
+  margin: 0;
+  padding: 11px 12px;
+  color: #64748B;
+  background: #FFFFFF;
+  border: 1px solid #E8EDF2;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Consolidated closure validation */
+
+.case-closure-validation {
+  margin-top: 12px;
+  padding: 14px 15px;
+  color: #8F2929;
+  background: #FFF5F4;
+  border: 1px solid #F4D1CE;
+  border-left: 3px solid #D95C54;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.case-closure-validation strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #A52D2D;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.case-closure-validation ul {
+  margin: 5px 0 0;
+  padding-left: 17px;
+}
+
+.case-closure-validation li {
+  margin-top: 3px;
+}
+
+/* Close Case action */
+
+.case-drawer-footer {
+  gap: 10px;
+  align-items: center;
+}
+
+.case-close-button {
+  min-width: 125px;
+  min-height: 42px;
+  padding: 11px 20px;
+  color: #FFFFFF;
+  background: #009802;
+  border: 1px solid #009802;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.case-close-button:hover:not(:disabled) {
+  background: #007D02;
+  border-color: #007D02;
+  box-shadow: 0 3px 10px rgba(0, 152, 2, 0.2);
+}
+
+.case-close-button:focus-visible {
+  outline: 3px solid rgba(0, 152, 2, 0.25);
+  outline-offset: 3px;
+}
+
+.case-close-button:disabled {
+  color: #8B95A5;
+  background: #E8EBEF;
+  border-color: #DDE2E8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Closure form fields */
+
+.case-detail-section #closure-type,
+.case-detail-section #closure-reason,
+.case-detail-section #closure-second-approver {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  color: #243247;
+  background: #FFFFFF;
+  border: 1px solid #DCE3EA;
+  border-radius: 9px;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.case-detail-section #closure-type,
+.case-detail-section #closure-second-approver {
+  min-height: 44px;
+}
+
+.case-detail-section #closure-reason {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.case-detail-section #closure-type:focus,
+.case-detail-section #closure-reason:focus,
+.case-detail-section #closure-second-approver:focus {
+  border-color: #179FA2;
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.12);
+}
+
+.case-detail-section .case-detail-field label {
+  display: block;
+  margin-bottom: 3px;
+  color: #526174;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Responsive closure layout */
+
+@media (max-width: 600px) {
+  .case-closure-evidence {
+    padding: 13px;
+  }
+
+  .case-closure-evidence li {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .case-close-button {
+    min-width: 110px;
+    padding: 10px 14px;
+  }
+}
+
+
+/* =========================================
+   CASE CLOSURE — FORM FIELD STYLING
+========================================= */
+
+.case-detail-section #closure-type,
+.case-detail-section #closure-reason,
+.case-detail-section #closure-second-approver {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  color: var(--color-text-primary);
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.case-detail-section #closure-type,
+.case-detail-section #closure-second-approver {
+  min-height: 46px;
+  cursor: pointer;
+}
+
+.case-detail-section #closure-reason {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.case-detail-section #closure-type:focus,
+.case-detail-section #closure-reason:focus,
+.case-detail-section #closure-second-approver:focus {
+  border-color: var(--color-teal);
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.12);
+}
+
+.case-detail-section #closure-reason::placeholder {
+  color: #94A3B8;
+  opacity: 1;
+}
+
+.case-detail-section .case-detail-field label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .case-detail-section #closure-type,
+  .case-detail-section #closure-reason,
+  .case-detail-section #closure-second-approver {
+    font-size: 13px;
+  }
+}
+
+
+/* =========================================
+   WORKLIST — RESPONSIVE MOBILE CARDS
+========================================= */
+
+/* Hidden on desktop */
+.worklist-mobile-cards {
+  display: none;
+}
+
+.worklist-desktop-table {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .worklist-desktop-table {
+    display: none;
+  }
+
+  .worklist-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .worklist-mobile-card {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 15px;
+    color: var(--color-text-primary);
+    background: #FFFFFF;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 150ms ease,
+                box-shadow 150ms ease;
+  }
+
+  .worklist-mobile-card:hover {
+    border-color: var(--color-teal);
+    box-shadow: 0 3px 12px rgba(15, 35, 65, 0.06);
+  }
+
+  .worklist-mobile-card:focus-visible {
+    outline: 3px solid rgba(23, 159, 162, 0.2);
+    outline-offset: 2px;
+  }
+
+  .worklist-mobile-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .worklist-mobile-card-top .worklist-patient {
+    min-width: 0;
+  }
+
+  .worklist-mobile-screening {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 14px;
+  }
+
+  .worklist-mobile-screening strong {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .worklist-mobile-screening span {
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .worklist-mobile-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .worklist-mobile-details > div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .worklist-mobile-details span {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+  }
+
+  .worklist-mobile-details strong {
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .worklist-mobile-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 11px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-teal);
+    font-size: 11px;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 380px) {
+  .worklist-mobile-cards {
+    padding: 8px;
+  }
+
+  .worklist-mobile-card {
+    padding: 12px;
+  }
+}
+
+
+/* =========================================
+   JUSR AI — R-55 CONTACT ATTEMPT STYLING
+========================================= */
+
+.case-closure-evidence {
+  margin-top: 16px;
+  padding: 16px;
+  background: #F7FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+}
+
+.case-closure-evidence > strong {
+  font-size: 13px;
+  margin-bottom: 12px;
+  letter-spacing: -0.1px;
+}
+
+.case-closure-evidence > p {
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  color: #526174;
+  background: #FFFFFF;
+  border: 1px solid #E8EDF2;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Contact attempt form controls */
+
+.case-closure-evidence #contact-route,
+.case-closure-evidence #contact-attempted-at,
+.case-closure-evidence #contact-outcome,
+.case-closure-evidence #contact-notes {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 10px 12px;
+  color: #243247;
+  background: #FFFFFF;
+  border: 1px solid #DCE3EA;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.case-closure-evidence #contact-notes {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.case-closure-evidence #contact-route:focus,
+.case-closure-evidence #contact-attempted-at:focus,
+.case-closure-evidence #contact-outcome:focus,
+.case-closure-evidence #contact-notes:focus {
+  border-color: #179FA2;
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.10);
+}
+
+/* Form labels */
+
+.case-closure-evidence .case-detail-field label {
+  margin-bottom: 3px;
+  color: #526174;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Record attempt button */
+
+.case-closure-evidence button {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 14px;
+  color: #FFFFFF;
+  background: #087F82;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.case-closure-evidence button:hover:not(:disabled) {
+  background: #06696C;
+}
+
+.case-closure-evidence button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Recorded attempts heading */
+
+.case-closure-evidence > div > strong {
+  display: block;
+  margin: 16px 0 10px;
+  color: #334155;
+  font-size: 12px;
+}
+
+/* Individual recorded attempts */
+
+.case-closure-evidence li {
+  padding: 12px;
+  background: #FFFFFF;
+  border: 1px solid #E4EAF0;
+  border-radius: 9px;
+}
+
+.case-closure-evidence li strong {
+  color: #087F82;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.case-closure-evidence li p {
+  margin-top: 5px;
+  color: #64748B;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.case-closure-evidence li small {
+  display: block;
+  margin-top: 7px;
+  color: #64748B;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Contact attempt validation */
+
+.case-closure-evidence .case-closure-validation {
+  margin: 10px 0;
+}
+
+/* Mobile adjustments */
+
+@media (max-width: 600px) {
+  .case-closure-evidence {
+    padding: 13px;
+  }
+
+  .case-closure-evidence #contact-route,
+  .case-closure-evidence #contact-attempted-at,
+  .case-closure-evidence #contact-outcome,
+  .case-closure-evidence #contact-notes {
+    font-size: 13px;
+  }
 }

@@ -67,7 +67,7 @@ function DashboardPage() {
   });
 
   return unsubscribe;
-}, [activeUser.role]);
+}, [activeUser.role, activeUser.facility.id]);
 
   async function handleSelectReferral(referralId: string) {
     try {
