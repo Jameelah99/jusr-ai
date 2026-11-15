@@ -1,0 +1,13 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://jusr-ai-backend.onrender.com/api/$1"
+    },
+    {
+      "source": "/p/(.*)",
+      "destination": "https://jusr-ai-backend.onrender.com/p/$1"
+    }
+  ]
+}
