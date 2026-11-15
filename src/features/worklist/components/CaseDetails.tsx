@@ -19,10 +19,18 @@ import type {
   DelayReasonCode,
 } from "../worklist.types";
 import type { WorklistCase } from "../worklist.types";
-import { useUser, type DemoUser } from "../../../context/UserContext";
+import type { DemoUser } from "../../../context/UserContext";
 import PriorityBadge from "./PriorityBadge";
 import { formatDateTime } from "../../../utils/formatDateTime";
-import { getEligiblePrimaryClinicians } from "../routing.service";
+import {
+  generatePatientLink,
+  getPatientLinks,
+  getPatientResponses,
+  type GeneratedPatientLink,
+  type PatientLinkRecord,
+  type PatientResponseRecord,
+} from "../../patient/patientAccessService";
+
 import { validateClosure } from "../closureValidation";
 import {
   getClosureEvidenceChecklist,
@@ -64,13 +72,24 @@ function CaseDetails({
   onRecordAssistedResponse,
   timelineEvents,
 }: CaseDetailsProps) {
-  const { demoUsers } = useUser();
-
-  const authorisedStaff = demoUsers.filter((user) => user.authorisedToClose);
+  // The authenticated backend session does not expose a staff directory.
+  // Do not populate approver choices from demo-only users.
+  const authorisedStaff: DemoUser[] = [];
 
   const [selectedOwner, setSelectedOwner] = useState("");
 
-  const [selectedClinician, setSelectedClinician] = useState("");
+  const [patientLinks, setPatientLinks] = useState<PatientLinkRecord[]>([]);
+  const [patientResponses, setPatientResponses] = useState<PatientResponseRecord[]>([]);
+  const [generatedPatientLink, setGeneratedPatientLink] =
+    useState<GeneratedPatientLink | null>(null);
+  const [patientAccessLoading, setPatientAccessLoading] = useState(false);
+  const [patientLinkGenerating, setPatientLinkGenerating] = useState(false);
+  const [patientAccessError, setPatientAccessError] = useState("");
+  const [patientLinkCopyStatus, setPatientLinkCopyStatus] = useState("");
+
+  const canManagePatientAccess =
+    activeUser.role === "coordinator" ||
+    activeUser.role === "referring_clinician";
 
   const canCloseCase = activeUser.authorisedToClose;
 
@@ -127,10 +146,6 @@ function CaseDetails({
   }, [caseItem?.id, caseItem?.assignedTo]);
 
   useEffect(() => {
-    setSelectedClinician("");
-  }, [caseItem?.id, caseItem?.specialty]);
-
-  useEffect(() => {
     if (!caseItem) {
       setContactAttempts([]);
       return;
@@ -152,6 +167,89 @@ function CaseDetails({
     setDelayExplanation("");
     setDelayFollowupError("");
   }, [caseItem?.id]);
+
+  useEffect(() => {
+    if (!caseItem || !canManagePatientAccess) {
+      setPatientLinks([]);
+      setPatientResponses([]);
+      setGeneratedPatientLink(null);
+      setPatientAccessError("");
+      return;
+    }
+
+    let cancelled = false;
+    setPatientAccessLoading(true);
+    setPatientAccessError("");
+    setGeneratedPatientLink(null);
+
+    Promise.all([
+      getPatientLinks(caseItem.id),
+      getPatientResponses(caseItem.id),
+    ])
+      .then(([links, responses]) => {
+        if (cancelled) return;
+        setPatientLinks(links);
+        setPatientResponses(responses);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setPatientAccessError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load patient access history.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setPatientAccessLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseItem?.id, canManagePatientAccess]);
+
+  async function handleGeneratePatientLink() {
+    if (!caseItem || isClosed || !canManagePatientAccess) return;
+
+    const confirmed = window.confirm(
+      "Generate a new secure patient link? Any previous active or locked link for this case will be superseded.",
+    );
+    if (!confirmed) return;
+
+    setPatientLinkGenerating(true);
+    setPatientAccessError("");
+    setPatientLinkCopyStatus("");
+    try {
+      const generated = await generatePatientLink(caseItem.id);
+      setGeneratedPatientLink(generated);
+      const [links, responses] = await Promise.all([
+        getPatientLinks(caseItem.id),
+        getPatientResponses(caseItem.id),
+      ]);
+      setPatientLinks(links);
+      setPatientResponses(responses);
+    } catch (error) {
+      setPatientAccessError(
+        error instanceof Error
+          ? error.message
+          : "Unable to generate the patient link.",
+      );
+    } finally {
+      setPatientLinkGenerating(false);
+    }
+  }
+
+  async function handleCopyPatientLink() {
+    if (!generatedPatientLink?.url) return;
+    try {
+      await navigator.clipboard.writeText(generatedPatientLink.url);
+      setPatientLinkCopyStatus("Link copied.");
+    } catch {
+      setPatientLinkCopyStatus(
+        "Copy was unavailable. Select and copy the link above.",
+      );
+    }
+  }
 
   const drawerRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -462,79 +560,58 @@ function CaseDetails({
             </section>
           )}
 
-          {caseItem.priority === "urgent" && caseItem.specialty && (
-            <section className="case-routing-panel">
-              <h3 className="case-section-title">Clinical specialty routing</h3>
+         {caseItem.priority === "urgent" && caseItem.specialty && (
+  <section className="case-routing-panel">
+    <h3 className="case-section-title">Clinical specialty routing</h3>
 
-              <p>
-                Required specialty: <strong>{caseItem.specialty}</strong>
-              </p>
+    <p>
+      Required specialty: <strong>{caseItem.specialty}</strong>
+    </p>
 
-              <p>
-                Routing status: <strong>{caseItem.routingStatus}</strong>
-              </p>
+    <p>
+      Routing status: <strong>{caseItem.routingStatus}</strong>
+    </p>
 
-              {!isClosed &&
-                caseItem.routingStatus === "awaiting_acceptance" &&
-                caseItem.assignedTo === activeUser.name &&
-                activeUser.role === "receiving_clinician" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Accept urgent case ${caseItem.id} assigned to ${caseItem.assignedTo}?`,
-                        )
-                      ) {
-                        onAcceptUrgentCase(caseItem.id);
-                      }
-                    }}
-                  >
-                    Accept case
-                  </button>
-                )}
+    {!isClosed &&
+      caseItem.routingStatus === "awaiting_acceptance" &&
+      caseItem.assignedTo === activeUser.name &&
+      activeUser.role === "receiving_clinician" && (
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                `Accept urgent case ${caseItem.id} assigned to you?`,
+              )
+            ) {
+              onAcceptUrgentCase(caseItem.id);
+            }
+          }}
+        >
+          Accept case
+        </button>
+      )}
 
-              {!isClosed && (
-                <>
-                  <label htmlFor="clinical-routing-select">
-                    Select eligible clinician
-                  </label>
-
-                  <select
-                    id="clinical-routing-select"
-                    value={selectedClinician}
-                    onChange={(event) =>
-                      setSelectedClinician(event.target.value)
-                    }
-                  >
-                    <option value="">Select a clinician</option>
-                    {getEligiblePrimaryClinicians(caseItem, demoUsers).map((clinician) => (
-                      <option key={clinician} value={clinician}>
-                        {clinician}
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    type="button"
-                    disabled={!selectedClinician}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Route ${caseItem.id} to ${selectedClinician} for clinical acceptance?`,
-                        )
-                      ) {
-                        onRouteUrgentCase(caseItem.id, selectedClinician);
-                        setSelectedClinician("");
-                      }
-                    }}
-                  >
-                    Route to clinician
-                  </button>
-                </>
-              )}
-            </section>
-          )}
+    {!isClosed &&
+      (activeUser.role === "coordinator" ||
+        activeUser.role === "referring_clinician") && (
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                `Route urgent case ${caseItem.id} to an eligible ${caseItem.specialty} clinician?`,
+              )
+            ) {
+              onRouteUrgentCase(caseItem.id, caseItem.specialty ?? "");
+            }
+          }}
+        >
+          Route to eligible clinician
+        </button>
+      )}
+  </section>
+)}
 
           {canCloseCase && !caseItem.closure && (
             <section className="case-detail-section">
@@ -786,6 +863,154 @@ function CaseDetails({
             </section>
           )}
 
+          {canManagePatientAccess && (
+            <section className="case-detail-section">
+              <h3 className="case-section-title">Patient access</h3>
+              <p>
+                Generate a secure link for the patient to review and respond.
+                A new link supersedes any previous active or locked link.
+              </p>
+
+              {!isClosed && (
+                <button
+                  type="button"
+                  onClick={handleGeneratePatientLink}
+                  disabled={patientLinkGenerating}
+                >
+                  {patientLinkGenerating
+                    ? "Generating secure link..."
+                    : "Generate patient link"}
+                </button>
+              )}
+
+              {generatedPatientLink && (
+                <div className="case-detail-notice" role="status">
+                  <strong>
+                    {generatedPatientLink.resent
+                      ? "Patient link resent"
+                      : "Patient link generated"}
+                  </strong>
+                  <p>
+                    This secure link is displayed once. Copy and share it
+                    through your approved communication process.
+                  </p>
+                  <div className="case-detail-field">
+                    <label htmlFor="generated-patient-link">Secure patient link</label>
+                    <input
+                      id="generated-patient-link"
+                      type="text"
+                      readOnly
+                      value={generatedPatientLink.url}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  </div>
+                  <button type="button" onClick={handleCopyPatientLink}>
+                    Copy patient link
+                  </button>
+                  {patientLinkCopyStatus && (
+                    <p role="status">{patientLinkCopyStatus}</p>
+                  )}
+                  <p>
+                    Expires:{" "}
+                    {new Date(generatedPatientLink.expiresAt).toLocaleString(
+                      "en-GB",
+                    )}
+                  </p>
+                  <p>
+                    Identity verification{" "}
+                    {generatedPatientLink.verificationRequired
+                      ? "is required."
+                      : "is not required for this patient."}
+                  </p>
+                  <small>{generatedPatientLink.note}</small>
+                </div>
+              )}
+
+              {patientAccessError && (
+                <p role="alert" className="case-closure-validation">
+                  {patientAccessError}
+                </p>
+              )}
+
+              <div>
+                <strong>Patient link history</strong>
+                {patientAccessLoading ? (
+                  <p>Loading patient access history...</p>
+                ) : patientLinks.length === 0 ? (
+                  <p>No patient links have been generated for this case.</p>
+                ) : (
+                  <ul>
+                    {patientLinks.map((link) => (
+                      <li key={link.id}>
+                        <strong>{link.status.replace(/_/g, " ")}</strong>
+                        <p>
+                          Created:{" "}
+                          {new Date(link.createdAt).toLocaleString("en-GB")}
+                        </p>
+                        <p>
+                          Expires:{" "}
+                          {new Date(link.expiresAt).toLocaleString("en-GB")}
+                        </p>
+                        {link.verifiedAt && (
+                          <p>
+                            Verified:{" "}
+                            {new Date(link.verifiedAt).toLocaleString("en-GB")}
+                          </p>
+                        )}
+                        {link.lockedAt && (
+                          <p>
+                            Locked:{" "}
+                            {new Date(link.lockedAt).toLocaleString("en-GB")}
+                          </p>
+                        )}
+                        <small>
+                          Failed verification attempts: {link.failedAttempts}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <strong>Recorded patient responses</strong>
+                {patientResponses.length === 0 ? (
+                  <p>No patient responses recorded yet.</p>
+                ) : (
+                  <ul>
+                    {patientResponses.map((response) => (
+                      <li key={response.id}>
+                        <strong>{response.kind.replace(/_/g, " ")}</strong>
+                        <p>
+                          Source:{" "}
+                          {response.source === "STAFF_ASSISTED"
+                            ? "Recorded by staff on behalf of patient"
+                            : "Submitted by patient"}
+                        </p>
+                        <p>
+                          Response:{" "}
+                          {response.value
+                            ? Object.entries(response.value)
+                                .map(([key, value]) => `${key}: ${String(value)}`)
+                                .join(", ")
+                            : "No response value"}
+                        </p>
+                        {response.note && <p>Note: {response.note}</p>}
+                        <small>
+                          Recorded:{" "}
+                          {new Date(response.recordedAt).toLocaleString("en-GB")}
+                          {response.recordedBy
+                            ? ` · By ${response.recordedBy.displayName} (${response.recordedBy.role})`
+                            : ""}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          )}
+
           <section className="case-detail-section">
             <h3 className="case-section-title">
               <ClipboardList size={17} />
@@ -840,7 +1065,7 @@ function CaseDetails({
               </div>
             )}
 
-            {!isClosed && (
+            {!isClosed && canManagePatientAccess && (
               <button
                 type="button"
                 className="case-assisted-response-button"

@@ -1,40 +1,38 @@
 import "./worklist.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import WorklistStats from "./components/WorklistStats";
 import WorklistFilters from "./components/WorklistFilters";
 import WorklistTable from "./components/WorklistTable";
 import CaseDetails from "./components/CaseDetails";
-import { getWorklist } from "../../services/api/worklistService";
+import {
+  getWorklist,
+  getCaseTimeline,
+  routeUrgentCase,
+  acceptUrgentCase,
+  transitionCase,
+} from "../../services/api/worklistService";
 import type {
   WorklistFilters as FilterValues,
   WorklistResponse,
   CaseTimelineEvent,
-  CaseClosureRecord,
-  CaseClosureRequest,
   ClosureEvidenceItem,
   ClosureType,
 } from "./worklist.types";
 import {
-  getDemoTimelineEvents,
   updateDemoCase,
-  addDemoTimelineEvent,
-  getClosureEvidenceChecklist,
-  getDemoContactAttempts,
 } from "./demoState";
-import { getEligiblePrimaryClinicians } from "./routing.service";
 import { useUser } from "../../context/UserContext";
-import { validateClosure } from "./closureValidation";
+
 
 function WorklistPage() {
-  const { activeUser, demoUsers } = useUser();
+  const { activeUser } = useUser();
   const [worklist, setWorklist] = useState<WorklistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const processedResponseRef = useRef<string | null>(null);
   const [filters, setFilters] = useState<FilterValues>({
     search: "",
     priority: "all",
@@ -43,15 +41,16 @@ function WorklistPage() {
     assignedTo: "all",
   });
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-  const [timelineEvents, setTimelineEvents] = useState<CaseTimelineEvent[]>(
-    () => getDemoTimelineEvents(),
-  );
+  const [timelineEvents, setTimelineEvents] = useState<CaseTimelineEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   async function loadWorklist() {
     try {
       setLoading(true);
       setError(null);
 
+      if (!activeUser) return;
       const data = await getWorklist(activeUser.facility.id);
       setWorklist(data);
     } catch (err) {
@@ -62,90 +61,36 @@ function WorklistPage() {
   }
 
   useEffect(() => {
-    loadWorklist();
-  }, []);
-
-  useEffect(() => {
-    const state = location.state as {
-      assistedResponseRecorded?: boolean;
-      caseId?: string;
-      recordedAt?: string;
-      recordedBy?: string;
-      staffRole?: string;
-    } | null;
-
-    if (
-      !state?.assistedResponseRecorded ||
-      !state.caseId ||
-      !state.recordedAt ||
-      !state.recordedBy ||
-      !state.staffRole
-    ) {
-      return;
-    }
-
-    const eventKey = `${state.caseId}-${state.recordedAt}`;
-
-    if (processedResponseRef.current === eventKey) return;
-
-    processedResponseRef.current = eventKey;
-
-    const newEvent: CaseTimelineEvent = {
-      id: `EVENT-${Date.now()}`,
-      caseId: state.caseId,
-      eventType: "patient_response_recorded",
-      title: "Patient response recorded by staff",
-      description:
-        "The coordinator recorded the patient's acknowledgement, understanding and confidence during a phone-assisted interaction.",
-      actor: state.recordedBy,
-      actorRole: state.staffRole,
-      timestamp: state.recordedAt,
-    };
-
-    setTimelineEvents((previous) => [newEvent, ...previous]);
-
-    navigate(location.pathname, {
-      replace: true,
-      state: null,
-    });
-  }, [location.key, location.pathname, location.state, navigate]);
+    if (activeUser) loadWorklist();
+  }, [activeUser]);
 
   const cases = useMemo(() => {
-  if (activeUser.role === "facility_administrator") {
-    return [];
-  }
+    if (!activeUser || activeUser.role === "facility_administrator") {
+      return [];
+    }
 
-  return (worklist?.cases ?? []).filter(
-    (item) =>
-      item.facilityId === activeUser.facility.id ||
-      item.ownerStaffId === activeUser.id ||
-      item.participantStaffIds?.includes(activeUser.id),
-  );
-}, [worklist?.cases, activeUser]);
+    return worklist?.cases ?? [];
+  }, [worklist?.cases, activeUser]);
 
-const summary = useMemo(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const summary = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const openCases = cases.filter(
-    (item) => !item.closure && item.status !== "Closed",
-  );
+    const openCases = cases.filter(
+      (item) => !item.closure && item.status !== "Closed",
+    );
 
-  return {
-    totalCases: cases.length,
-    urgentCases: openCases.filter(
-      (item) => item.priority === "urgent",
-    ).length,
-    overdueCases: openCases.filter(
-      (item) =>
-        item.dueDate &&
-        new Date(`${item.dueDate}T00:00:00`) < today,
-    ).length,
-    unassignedCases: openCases.filter(
-      (item) => item.assignedTo === null,
-    ).length,
-  };
-}, [cases]);
+    return {
+      totalCases: cases.length,
+      urgentCases: openCases.filter((item) => item.priority === "urgent")
+        .length,
+      overdueCases: openCases.filter(
+        (item) => item.dueDate && new Date(`${item.dueDate}T00:00:00`) < today,
+      ).length,
+      unassignedCases: openCases.filter((item) => item.assignedTo === null)
+        .length,
+    };
+  }, [cases]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -162,125 +107,83 @@ const summary = useMemo(() => {
 
   const selectedCase = cases.find((item) => item.id === selectedCaseId) ?? null;
 
-  const handleCloseCase = (
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedCaseId) {
+      setTimelineEvents([]);
+      setTimelineError(null);
+      setTimelineLoading(false);
+      return;
+    }
+
+    async function loadTimeline() {
+      try {
+        setTimelineLoading(true);
+        setTimelineError(null);
+        const requestedCaseId = selectedCaseId;
+        if (!requestedCaseId) return;
+
+        const events = await getCaseTimeline(requestedCaseId);
+        if (!cancelled) setTimelineEvents(events);
+      } catch (err) {
+        if (!cancelled) {
+          setTimelineEvents([]);
+          setTimelineError(
+            err instanceof Error ? err.message : "Unable to load case history.",
+          );
+        }
+      } finally {
+        if (!cancelled) setTimelineLoading(false);
+      }
+    }
+
+    loadTimeline();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCaseId]);
+
+    const handleCloseCase = async (
     caseId: string,
     closureType: ClosureType,
     reason: string,
-    _submittedEvidence: ClosureEvidenceItem[],
+    submittedEvidence: ClosureEvidenceItem[],
     secondApproverId?: string,
   ) => {
     const currentCase = cases.find((item) => item.id === caseId);
 
-    // Only authorised staff can close an open case.
-    if (!currentCase || currentCase.closure || !activeUser.authorisedToClose) {
+    if (!activeUser || !currentCase || currentCase.closure) {
       return;
     }
 
-    // Retrieve evidence from the stored records, not from the UI.
-    const evidence = getClosureEvidenceChecklist(caseId);
+    if (!reason.trim()) {
+      window.alert("Please provide a closure reason.");
+      return;
+    }
 
-    const selectedApprover = secondApproverId
-      ? demoUsers.find((user) => user.id === secondApproverId)
-      : undefined;
+    try {
+      await transitionCase(caseId, {
+        status: "CLOSED",
+        closureType,
+        reason: reason.trim(),
+        closureEvidence: submittedEvidence,
+        ...(secondApproverId
+          ? { secondApproverStaffId: secondApproverId }
+          : {}),
+      });
 
-    const validSecondApprover =
-      selectedApprover &&
-      selectedApprover.authorisedToClose &&
-      selectedApprover.id !== activeUser.id
-        ? selectedApprover
-        : undefined;
+      await loadWorklist();
 
-    const closureRequest: CaseClosureRequest = {
-      closureType,
-      reason,
-      evidence,
-      ...(secondApproverId ? { secondApproverStaffId: secondApproverId } : {}),
-    };
-
-    // Independently validate the closure before saving.
-    const validation = validateClosure(
-      currentCase,
-      closureRequest.closureType,
-      closureRequest.reason,
-      closureRequest.evidence,
-      validSecondApprover?.name,
-      {
-        contactAttempts: getDemoContactAttempts(caseId),
-      },
-    );
-
-    if (!validation.canClose) {
+      const events = await getCaseTimeline(caseId);
+      setTimelineEvents(events);
+    } catch (err) {
       window.alert(
-        [validation.message, ...validation.missing].filter(Boolean).join("\n"),
+        err instanceof Error
+          ? err.message
+          : "Unable to close this case. Please check the case requirements.",
       );
-      return;
     }
-
-    // Create the permanent closure audit record.
-    const now = new Date().toISOString();
-
-    const closureRecord: CaseClosureRecord = {
-      id: `CLOSE-${Date.now()}`,
-      caseId,
-      closureType,
-      reason: reason.trim(),
-      evidence,
-      closedBy: activeUser.name,
-      closedByStaffId: activeUser.id,
-      closedByRole: activeUser.role,
-      closedAt: now,
-      ...(closureType === "other" && validSecondApprover
-        ? {
-            secondApprover: validSecondApprover.name,
-            secondApproverStaffId: validSecondApprover.id,
-          }
-        : {}),
-    };
-
-    // Persist the closed case.
-    const updatedCase = updateDemoCase(caseId, {
-      status: "Closed",
-      closure: closureRecord,
-      closedAt: now,
-      lastUpdated: now,
-    });
-
-    if (!updatedCase) return;
-
-    // Refresh the visible worklist.
-    setWorklist((previous) =>
-      previous
-        ? {
-            ...previous,
-            cases: previous.cases.map((item) =>
-              item.id === caseId ? updatedCase : item,
-            ),
-          }
-        : previous,
-    );
-
-    // Record the closure in the audit timeline.
-
-    // Record the closure in the audit timeline.
-    addDemoTimelineEvent({
-      id: `EVT-${Date.now()}`,
-      caseId,
-      eventType: "case_closed",
-      title: "Case closed",
-      description: [
-        `Case closed as ${closureType}. Reason: ${reason.trim()}`,
-        ...(closureType === "other" && validSecondApprover
-          ? [
-              `Second approval: ${validSecondApprover.name} (${validSecondApprover.role}).`,
-            ]
-          : []),
-      ].join(" "),
-      actor: activeUser.name,
-      actorRole: activeUser.role,
-      timestamp: now,
-    });
-
-    setTimelineEvents(getDemoTimelineEvents());
   };
 
   const availableOwners = ["Dr. Williams", "Nurse Johnson", "Dr. Adams"];
@@ -342,6 +245,14 @@ const summary = useMemo(() => {
     });
   }, [cases, filters]);
 
+  if (!activeUser) {
+    return (
+      <div className="worklist-state">
+        <p>Loading your staff account...</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="worklist-state">
@@ -395,6 +306,14 @@ const summary = useMemo(() => {
         onSelectCase={(item) => setSelectedCaseId(item.id)}
       />
 
+      {selectedCase !== null && timelineLoading && (
+        <p className="worklist-timeline-status">Loading case history...</p>
+      )}
+      {selectedCase !== null && timelineError && (
+        <p className="worklist-timeline-status" role="alert">
+          {timelineError}
+        </p>
+      )}
       {selectedCase !== null && (
         <CaseDetails
           caseItem={selectedCase}
@@ -417,7 +336,7 @@ const summary = useMemo(() => {
             }
           }}
           availableOwners={availableOwners}
-          onRouteUrgentCase={(caseId, clinician) => {
+          onRouteUrgentCase={async (caseId, clinician) => {
             const currentCase = cases.find((item) => item.id === caseId);
 
             if (
@@ -429,49 +348,24 @@ const summary = useMemo(() => {
               return;
             }
 
-            const eligibleClinicians = getEligiblePrimaryClinicians(
-              currentCase,
-              demoUsers,
-            );
+            try {
+              await routeUrgentCase(caseId, { specialty: clinician });
 
-            if (!eligibleClinicians.includes(clinician)) return;
+              await loadWorklist();
 
-            const now = new Date().toISOString();
-
-            const updatedCase = updateDemoCase(caseId, {
-              assignedTo: clinician,
-              assignedClinicianSpecialty: currentCase.specialty,
-              routingStatus: "awaiting_acceptance",
-              lastUpdated: now,
-            });
-
-            if (!updatedCase) return;
-
-            setWorklist((previous) =>
-              previous
-                ? {
-                    ...previous,
-                    cases: previous.cases.map((item) =>
-                      item.id === caseId ? updatedCase : item,
-                    ),
-                  }
-                : previous,
-            );
-
-            addDemoTimelineEvent({
-              id: `EVT-${Date.now()}`,
-              caseId,
-              eventType: "urgent_case_routed",
-              title: "Urgent case routed to specialist",
-              description: `Case routed to ${clinician} for ${currentCase.specialty} review. Awaiting acceptance.`,
-              actor: "Demo Coordinator",
-              actorRole: "Care Coordinator",
-              timestamp: now,
-            });
-
-            setTimelineEvents(getDemoTimelineEvents());
+              if (selectedCaseId) {
+                const events = await getCaseTimeline(caseId);
+                setTimelineEvents(events);
+              }
+            } catch (err) {
+              window.alert(
+                err instanceof Error
+                  ? err.message
+                  : "Unable to route this urgent case.",
+              );
+            }
           }}
-          onAcceptUrgentCase={(caseId) => {
+          onAcceptUrgentCase={async (caseId) => {
             const currentCase = cases.find((item) => item.id === caseId);
 
             if (
@@ -484,39 +378,20 @@ const summary = useMemo(() => {
               return;
             }
 
-            const now = new Date().toISOString();
+            try {
+              await acceptUrgentCase(caseId);
 
-            const updatedCase = updateDemoCase(caseId, {
-              routingStatus: "accepted",
-              status: "Notifying",
-              lastUpdated: now,
-            });
+              await loadWorklist();
 
-            if (!updatedCase) return;
-
-            setWorklist((previous) =>
-              previous
-                ? {
-                    ...previous,
-                    cases: previous.cases.map((item) =>
-                      item.id === caseId ? updatedCase : item,
-                    ),
-                  }
-                : previous,
-            );
-
-            addDemoTimelineEvent({
-              id: `EVT-${Date.now()}`,
-              caseId,
-              eventType: "urgent_case_accepted",
-              title: "Urgent case accepted",
-              description: `${activeUser.name} accepted the urgent ${currentCase.specialty} case.`,
-              actor: activeUser.name,
-              actorRole: activeUser.role,
-              timestamp: now,
-            });
-
-            setTimelineEvents(getDemoTimelineEvents());
+              const events = await getCaseTimeline(caseId);
+              setTimelineEvents(events);
+            } catch (err) {
+              window.alert(
+                err instanceof Error
+                  ? err.message
+                  : "Unable to accept this urgent case.",
+              );
+            }
           }}
           onAssignOwner={(caseId, owner) => {
             const currentCase = cases.find((item) => item.id === caseId);
@@ -534,7 +409,6 @@ const summary = useMemo(() => {
             // Do not record an event if ownership has not changed.
             if (previousOwner === owner) return;
 
-            const isReassignment = previousOwner !== null;
             const now = new Date().toISOString();
 
             const updatedCase = updateDemoCase(caseId, {
@@ -554,23 +428,6 @@ const summary = useMemo(() => {
                   }
                 : previous,
             );
-
-            addDemoTimelineEvent({
-              id: `EVT-${Date.now()}`,
-              caseId,
-              eventType: isReassignment ? "case_reassigned" : "case_assigned",
-              title: isReassignment
-                ? "Case owner reassigned"
-                : "Case owner assigned",
-              description: isReassignment
-                ? `Case ownership changed from ${previousOwner} to ${owner}.`
-                : `Case assigned to ${owner}.`,
-              actor: activeUser.name,
-              actorRole: activeUser.role,
-              timestamp: now,
-            });
-
-            setTimelineEvents(getDemoTimelineEvents());
           }}
           onRecordAssistedResponse={(caseItem) => {
             if (caseItem.closure || caseItem.status === "Closed") return;

@@ -1,26 +1,80 @@
 
-import type { DashboardData } from "../../features/dashboard/dashboard.types";
+import { apiRequest } from "./apiClient";
 
-export async function getDashboardSummary(
-  role: string,
-  facilityId: string
-): Promise<DashboardData> {
-  const params = new URLSearchParams({
-    role,
-    facilityId,
-  });
+export interface DashboardApiData {
+  role: string;
+  generatedAt?: string;
 
-  const response = await fetch(
-    `/api/dashboard/summary?${params.toString()}`
-  );
+  stats?: {
+    activeCases?: number;
+    urgentCases?: number;
+    overdueCases?: number;
+    unassignedCases?: number;
+    missingDelayReason?: number;
+    awaitingUrgentAcceptance?: number;
+    urgentRoutingExceptions?: number;
+    assignedCases?: number;
+  };
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch dashboard summary: ${response.status}`
-    );
-  }
+  referrals?: {
+    total?: number;
+    pending?: number;
+    accepted?: number;
+    rejected?: number;
+    incoming?: number;
+    urgent?: number;
+    assignedToMe?: number;
+    outstandingDecisions?: number;
+  };
 
-  const data: DashboardData = await response.json();
+  urgentRouting?: {
+    awaitingAcceptance?: number;
+    accepted?: number;
+  };
 
-  return data;
+  facility?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+
+  staffAccess?: {
+    totalStaff: number;
+    activeStaff: number;
+    inactiveStaff: number;
+    byRole?: Record<string, number>;
+  };
+
+  connection?: {
+    status: string;
+  };
+
+    priorityCases?: Array<{
+    id: string;
+    caseId: string;
+    patientLabel: string;
+    age: number | null;
+    screeningType: string | null;
+    screeningResult: string | null;
+    priority: "URGENT" | "HIGH" | "NORMAL";
+    status: string;
+    nextStep: string | null;
+    nextActionCode: string | null;
+    owner: string;
+    dueAt: string | null;
+    overdue: boolean;
+  }>;
+
+  recentActivity?: Array<{
+    id: string;
+    description: string;
+    actor: string;
+    actorRole: string | null;
+    eventType: string;
+    timestamp: string;
+  }>;
+}
+
+export async function getDashboardSummary(): Promise<DashboardApiData> {
+  return apiRequest<DashboardApiData>("/api/dashboard/summary");
 }

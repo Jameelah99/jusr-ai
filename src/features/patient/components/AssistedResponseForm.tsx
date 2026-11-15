@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { CheckCircle2, Circle, Phone, UserRound } from "lucide-react";
 import "../assisted-response.css";
@@ -14,7 +15,7 @@ export interface AssistedResponse {
 }
 
 interface AssistedResponseFormProps {
-  onSubmit: (response: AssistedResponse) => void;
+  onSubmit: (response: AssistedResponse) => Promise<void> | void;
 }
 
 function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
@@ -25,11 +26,13 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
   const [resultExplained, setResultExplained] = useState(false);
   const [callbackRequested, setCallbackRequested] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const canSubmit = acknowledged && understanding !== "" && confidence !== null;
+  const canSubmit =
+    acknowledged && understanding !== "" && confidence !== null;
 
-  const handleSubmit = () => {
-    if (!canSubmit || submitted) return;
+  const handleSubmit = async () => {
+    if (!canSubmit || submitted || saving) return;
 
     const response: AssistedResponse = {
       acknowledged,
@@ -37,13 +40,21 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
       confidence,
       resultExplained,
       callbackRequested,
-      recordedBy: "Demo Coordinator",
-      staffRole: "Care Coordinator",
-      recordedAt: new Date().toISOString(),
+      recordedBy: "",
+      staffRole: "",
+      recordedAt: "",
     };
 
-    onSubmit(response);
-    setSubmitted(true);
+    setSaving(true);
+
+    try {
+      await onSubmit(response);
+      setSubmitted(true);
+    } catch {
+      // Keep the form available so the staff member can retry.
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -69,7 +80,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
         <button
           type="button"
           className={`assisted-option ${acknowledged ? "selected" : ""}`}
-          disabled={submitted}
+          disabled={submitted || saving}
           onClick={() => setAcknowledged(!acknowledged)}
           aria-pressed={acknowledged}
         >
@@ -86,7 +97,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
             <button
               key={option}
               type="button"
-              disabled={submitted}
+              disabled={submitted || saving}
               className={`assisted-choice ${
                 understanding === option ? "selected" : ""
               }`}
@@ -108,7 +119,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
             <button
               key={rating}
               type="button"
-              disabled={submitted}
+              disabled={submitted || saving}
               className={`assisted-confidence ${
                 confidence === rating ? "selected" : ""
               }`}
@@ -127,7 +138,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
         <button
           type="button"
           className={`assisted-option ${resultExplained ? "selected" : ""}`}
-          disabled={submitted}
+          disabled={submitted || saving}
           onClick={() => setResultExplained(!resultExplained)}
           aria-pressed={resultExplained}
         >
@@ -141,7 +152,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
 
         <button
           type="button"
-          disabled={submitted}
+          disabled={submitted || saving}
           className={`assisted-option ${callbackRequested ? "selected" : ""}`}
           onClick={() => setCallbackRequested(!callbackRequested)}
           aria-pressed={callbackRequested}
@@ -156,7 +167,7 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
           <UserRound size={18} />
           <div>
             <strong>Recorded by staff on behalf of patient</strong>
-            <span>Demo Coordinator · Care Coordinator</span>
+            <span>Authenticated staff recording</span>
           </div>
         </div>
       )}
@@ -164,17 +175,23 @@ function AssistedResponseForm({ onSubmit }: AssistedResponseFormProps) {
       <div className="assisted-form-submit">
         {!submitted ? (
           <>
-            <button type="button" disabled={!canSubmit} onClick={handleSubmit}>
+            <button
+              type="button"
+              disabled={!canSubmit || saving}
+              onClick={handleSubmit}
+            >
               <CheckCircle2 size={17} />
-              Save patient response
+              {saving ? "Saving response..." : "Save patient response"}
             </button>
 
-            <p>Acknowledgement, understanding and confidence are required.</p>
+            <p>
+              Acknowledgement, understanding and confidence are required.
+            </p>
           </>
         ) : (
           <div className="assisted-saved-message" role="status">
             <CheckCircle2 size={19} />
-            Patient response recorded successfully in this demonstration.
+            Patient response recorded successfully.
           </div>
         )}
       </div>

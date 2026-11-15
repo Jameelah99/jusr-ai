@@ -22,7 +22,7 @@ function PatientsPage() {
       setLoading(true);
       setError(null);
 
-      const data = await getPatients(activeUser.facility.name);
+      const data = await getPatients();
       setPatients(data);
     } catch {
       setError("Unable to load patient records.");
@@ -31,9 +31,11 @@ function PatientsPage() {
     }
   }
 
-  useEffect(() => {
+ useEffect(() => {
+  if (!activeUser) return;
+
   loadPatients();
-}, [activeUser.facility.name]);
+}, [activeUser]);
 
   const facilities = useMemo(
     () => [...new Set(patients.map((patient) => patient.facility))],

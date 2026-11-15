@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -9,46 +10,197 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import StatCard from "./components/StatCard";
 import PriorityQueue from "./components/PriorityQueue";
 import CareProgress from "./components/CareProgress";
 import ReferralOverview from "./components/ReferralOverview";
 import RecentActivity from "./components/RecentActivity";
 import ReferralDetails from "../referrals/components/ReferralDetails";
+
 import type { Referral } from "../referrals/referrals.types";
 import { getReferrals } from "../referrals/referralsService";
 import { useUser } from "../../context/UserContext";
-import { getDashboardSummary } from "../../services/api/dashboardService";
-import { subscribeToDemoDataChanges } from "../worklist/demoState";
+import { getDashboardSummary, type DashboardApiData } from "../../services/api/dashboardService";
+
 import type {
-  DashboardData,
   DashboardSummary,
   ReferringClinicianDashboard,
   ReceivingClinicianDashboard,
   FacilityAdministratorDashboard,
+  PriorityCase,
+  RecentActivityItem,
+  IncomingReferral,
 } from "./dashboard.types";
+
 import "./dashboard.css";
 
+function formatDueDate(value?: string | null): string {
+  if (!value) return "No due date";
 
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "No due date";
+
+  if (date.getTime() < Date.now()) return "Overdue";
+
+  return `Due ${date.toLocaleDateString()}`;
+}
+
+function mapPriorityCases(data: DashboardApiData): PriorityCase[] {
+  return (data.priorityCases ?? []).map((item) => ({
+    id: item.id,
+    patientLabel: item.patientLabel,
+    screeningResult: item.screeningResult ?? "Not recorded",
+    nextStep: item.nextStep ?? "No next action recorded",
+    owner: item.owner ?? "Unassigned",
+    dueLabel: formatDueDate(item.dueAt),
+    priority: item.priority.toLowerCase() as PriorityCase["priority"],
+    status: item.status,
+  }));
+}
+
+function mapRecentActivity(data: DashboardApiData): RecentActivityItem[] {
+  return (data.recentActivity ?? []).map((item) => ({
+    id: item.id,
+    description: item.description,
+    actor: item.actor,
+    timestampLabel: item.timestamp
+      ? new Date(item.timestamp).toLocaleString()
+      : "Time unavailable",
+  }));
+}
+
+function mapCoordinatorDashboard(data: DashboardApiData): DashboardSummary {
+  return {
+    stats: {
+      activeCases: data.stats?.activeCases ?? 0,
+      urgentCases: data.stats?.urgentCases ?? 0,
+      overdueCases: data.stats?.overdueCases ?? 0,
+      unassignedCases: data.stats?.unassignedCases ?? 0,
+    },
+    priorityCases: mapPriorityCases(data),
+    careProgress: [],
+    recentActivity: mapRecentActivity(data),
+    referrals: {
+      total: data.referrals?.total ?? 0,
+      accepted: data.referrals?.accepted ?? 0,
+      pending: data.referrals?.pending ?? 0,
+      rejected: data.referrals?.rejected ?? 0,
+    },
+  };
+}
+
+function mapReferringDashboard(data: DashboardApiData): ReferringClinicianDashboard {
+  return {
+    assignedCases: data.stats?.assignedCases ?? 0,
+    casesAwaitingReview: 0,
+    referralsPending: data.referrals?.pending ?? 0,
+    recentCases: (data.priorityCases ?? []).map((item) => ({
+      id: item.caseId,
+      patientLabel: item.patientLabel,
+      screeningType: item.screeningType ?? "Screening",
+      screeningResult: item.screeningResult ?? "Not recorded",
+      priority: item.priority.toLowerCase() as "urgent" | "high" | "normal",
+      status: item.status,
+      nextAction: item.nextStep ?? "No next action recorded",
+      dueLabel: formatDueDate(item.dueAt),
+    })),
+  };
+}
+
+function mapReceivingDashboard(
+  data: DashboardApiData,
+  referrals: IncomingReferral[],
+): ReceivingClinicianDashboard {
+  return {
+    pendingReferrals: data.referrals?.pending ?? 0,
+    acceptedReferrals: data.referrals?.accepted ?? 0,
+    urgentReferrals: data.referrals?.urgent ?? 0,
+    referrals,
+  };
+}
+
+function mapFacilityAdminDashboard(
+  data: DashboardApiData,
+): FacilityAdministratorDashboard {
+  return {
+    staff: {
+      totalStaff: data.staffAccess?.totalStaff ?? 0,
+      activeStaff: data.staffAccess?.activeStaff ?? 0,
+      inactiveStaff: data.staffAccess?.inactiveStaff ?? 0,
+      pendingAccess: 0,
+    },
+    facilityConnections: data.facility
+      ? [
+          {
+            id: data.facility.id,
+            facilityName: data.facility.name,
+            connectionStatus:
+              data.connection?.status === "DEMO"
+                ? "connected"
+                : "pending",
+            lastChecked: data.generatedAt
+              ? new Date(data.generatedAt).toLocaleString()
+              : "Not available",
+          },
+        ]
+      : [],
+  };
+}
 
 function DashboardPage() {
   const { activeUser } = useUser();
 
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [dashboard, setDashboard] = useState<
+    | DashboardSummary
+    | ReferringClinicianDashboard
+    | ReceivingClinicianDashboard
+    | FacilityAdministratorDashboard
+    | null
+  >(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
 
-  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
-    null,
-  );
-
-  async function loadDashboard(role = activeUser.role) {
+  const loadDashboard = useCallback(async () => {
+        if (!activeUser) {
+      setDashboard(null);
+      setError("Please sign in to view your dashboard.");
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
 
-      const data = await getDashboardSummary(role, activeUser.facility.id);
-      setDashboard(data);
+      const data = await getDashboardSummary();
+
+      if (activeUser.role === "coordinator") {
+        setDashboard(mapCoordinatorDashboard(data));
+      } else if (activeUser.role === "referring_clinician") {
+        setDashboard(mapReferringDashboard(data));
+      } else if (activeUser.role === "receiving_clinician") {
+        const response = await getReferrals();
+
+const incoming: IncomingReferral[] = response.referrals.map((item) => ({
+  id: item.id,
+  patientLabel: item.patientLabel,
+  screeningType: item.screeningType,
+  priority: item.priority,
+  referringFacility: item.referringFacility,
+  referralReason: item.referralReason,
+  receivedAt: item.createdAt,
+  status: item.status,
+}));
+        setDashboard(mapReceivingDashboard(data, incoming));
+      } else if (activeUser.role === "facility_administrator") {
+        setDashboard(mapFacilityAdminDashboard(data));
+      } else {
+        setDashboard(null);
+        setError("Your account role does not have a dashboard view.");
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to load dashboard data.",
@@ -57,25 +209,16 @@ function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeUser]);
 
- useEffect(() => {
-  loadDashboard(activeUser.role);
-
-  const unsubscribe = subscribeToDemoDataChanges(() => {
-    loadDashboard(activeUser.role);
-  });
-
-  return unsubscribe;
-}, [activeUser.role, activeUser.facility.id]);
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   async function handleSelectReferral(referralId: string) {
     try {
       const response = await getReferrals();
-
-      const referral = response.referrals.find(
-        (item) => item.id === referralId,
-      );
+      const referral = response.referrals.find((item) => item.id === referralId);
 
       if (!referral) {
         setError("Referral details could not be found.");
@@ -97,13 +240,21 @@ function DashboardPage() {
     );
   }
 
+  if (!activeUser) {
+  return (
+    <div className="dashboard-state">
+      <p>Please sign in to continue.</p>
+    </div>
+  );
+}
+
   if (error || !dashboard) {
     return (
       <div className="dashboard-state dashboard-error">
         <AlertCircle size={28} />
         <h2>Dashboard unavailable</h2>
         <p>{error ?? "No dashboard data was returned."}</p>
-        <button onClick={() => loadDashboard()}>Try again</button>
+        <button onClick={loadDashboard}>Try again</button>
       </div>
     );
   }
@@ -130,7 +281,9 @@ function DashboardPage() {
         </div>
       </div>
 
-      {"stats" in dashboard && <CoordinatorDashboard dashboard={dashboard} />}
+      {"stats" in dashboard && (
+        <CoordinatorDashboard dashboard={dashboard} />
+      )}
 
       {"assignedCases" in dashboard && (
         <ReferringClinicianDashboardView dashboard={dashboard} />
@@ -151,8 +304,8 @@ function DashboardPage() {
         <ReferralDetails
           referral={selectedReferral}
           onClose={() => setSelectedReferral(null)}
-          onReferralUpdated={(updatedReferral) => {
-            setSelectedReferral(updatedReferral);
+          onReferralUpdated={() => {
+            setSelectedReferral(null);
             loadDashboard();
           }}
         />
@@ -161,7 +314,11 @@ function DashboardPage() {
   );
 }
 
-function CoordinatorDashboard({ dashboard }: { dashboard: DashboardSummary }) {
+function CoordinatorDashboard({
+  dashboard,
+}: {
+  dashboard: DashboardSummary;
+}) {
   const { stats } = dashboard;
 
   return (
@@ -216,6 +373,7 @@ function ReferringClinicianDashboardView({
   dashboard: ReferringClinicianDashboard;
 }) {
   const navigate = useNavigate();
+
   return (
     <>
       <section className="stats-grid">
@@ -229,7 +387,7 @@ function ReferringClinicianDashboardView({
         <StatCard
           label="Awaiting review"
           value={dashboard.casesAwaitingReview}
-          description="Require clinical review"
+          description="Not yet available from the API"
           icon={AlertCircle}
           tone="coral"
         />
@@ -245,49 +403,43 @@ function ReferringClinicianDashboardView({
       <section className="dashboard-section">
         <h2>Cases requiring attention</h2>
 
-        {dashboard.recentCases.map((item) => (
-          <div className="dashboard-list-item" key={item.id}>
-            <div>
-              <strong>
-                {item.id} · {item.patientLabel}
-              </strong>
-              <p>
-                {item.screeningType} — {item.screeningResult}
-              </p>
-              <p>{item.nextAction}</p>
-            </div>
+        {dashboard.recentCases.length === 0 ? (
+          <p>No cases currently require attention.</p>
+        ) : (
+          dashboard.recentCases.map((item) => (
+            <div className="dashboard-list-item" key={item.id}>
+              <div>
+                <strong>{item.id} · {item.patientLabel}</strong>
+                <p>{item.screeningType} — {item.screeningResult}</p>
+                <p>{item.nextAction}</p>
+              </div>
 
-            <div className="dashboard-case-actions">
-              <span
-                className={`dashboard-due-label ${
-                  item.dueLabel.toLowerCase().includes("overdue")
-                    ? "overdue"
-                    : "normal"
-                }`}
-              >
-                {item.dueLabel}
-              </span>
+              <div className="dashboard-case-actions">
+                <span
+                  className={`dashboard-due-label ${
+                    item.dueLabel.toLowerCase().includes("overdue")
+                      ? "overdue"
+                      : "normal"
+                  }`}
+                >
+                  {item.dueLabel}
+                </span>
 
-              <button
-                type="button"
-                className="dashboard-action-button"
-                onClick={() => {
-                  if (item.nextAction.toLowerCase().includes("consultation")) {
-                    navigate(`/consultations?caseId=${item.id}`);
-                  } else {
+                <button
+                  type="button"
+                  className="dashboard-action-button"
+                  onClick={() =>
                     navigate(`/worklist?caseId=${item.id}`, {
-                      state: {
-                        returnTo: "/",
-                      },
-                    });
+                      state: { returnTo: "/" },
+                    })
                   }
-                }}
-              >
-                Open case
-              </button>
+                >
+                  Open case
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </section>
     </>
   );
@@ -329,31 +481,33 @@ function ReceivingClinicianDashboardView({
       <section className="dashboard-section">
         <h2>Incoming referrals</h2>
 
-        {dashboard.referrals.map((referral) => (
-          <div
-            className="dashboard-list-item incoming-referral-item"
-            key={referral.id}
-            onClick={() => onSelectReferral(referral.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onSelectReferral(referral.id);
-              }
-            }}
-          >
-            <div>
-              <strong>
-                {referral.id} · {referral.patientLabel}
-              </strong>
-              <p>{referral.screeningType}</p>
-              <p>From: {referral.referringFacility}</p>
-              <p>{referral.referralReason}</p>
+        {dashboard.referrals.length === 0 ? (
+          <p>No incoming referrals at the moment.</p>
+        ) : (
+          dashboard.referrals.map((referral) => (
+            <div
+              className="dashboard-list-item incoming-referral-item"
+              key={referral.id}
+              onClick={() => onSelectReferral(referral.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectReferral(referral.id);
+                }
+              }}
+            >
+              <div>
+                <strong>{referral.id} · {referral.patientLabel}</strong>
+                <p>{referral.screeningType}</p>
+                <p>From: {referral.referringFacility}</p>
+                <p>{referral.referralReason}</p>
+              </div>
+              <span>{referral.status.replace("_", " ")}</span>
             </div>
-            <span>{referral.status.replace("_", " ")}</span>
-          </div>
-        ))}
+          ))
+        )}
       </section>
     </>
   );
@@ -391,7 +545,7 @@ function FacilityAdministratorDashboardView({
         <StatCard
           label="Pending access"
           value={dashboard.staff.pendingAccess}
-          description="Awaiting access review"
+          description="Not currently tracked"
           icon={AlertCircle}
           tone="coral"
         />

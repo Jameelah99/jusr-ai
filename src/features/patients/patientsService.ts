@@ -1,15 +1,32 @@
-
-import { patientsMock } from "./patients.mock";
+import { apiRequest } from "../../services/api/apiClient";
 import type { Patient } from "./patients.types";
 
-export async function getPatients(
-  facilityName: string,
-): Promise<Patient[]> {
-  // Simulate an API request for the frontend demonstration.
-  await new Promise((resolve) => setTimeout(resolve, 400));
+interface PatientApiRecord {
+  id: string;
+  displayLabel: string;
+  ageYears: number | null;
+  sex: "Male" | "Female";
+  isSynthetic: boolean;
+}
 
-  // Return only patients belonging to the active user's facility.
-  return patientsMock.filter(
-    (patient) => patient.facility === facilityName,
-  );
+export async function getPatients(): Promise<Patient[]> {
+  const records = await apiRequest<PatientApiRecord[]>("/api/patients");
+
+  return records.map((item) => {
+    const nameParts = item.displayLabel.trim().split(/\s+/);
+
+    return {
+      id: item.id,
+      patientNumber: item.id,
+      firstName: nameParts[0] ?? "",
+      lastName: nameParts.slice(1).join(" "),
+      age: item.ageYears ?? 0,
+      sex: item.sex,
+      phone: "",
+      facility: "Not provided",
+      activeCases: 0,
+      latestScreening: "Not available",
+      lastUpdated: "",
+    };
+  });
 }

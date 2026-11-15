@@ -1,9 +1,5 @@
 
-export type ConsultationStatus =
-  | "REQUESTED"
-  | "ACCEPTED"
-  | "OUTCOME_RECORDED"
-  | "ESCALATED";
+export type ConsultationStatus = "ACCEPTED" | "OUTCOME_RECORDED";
 
 export interface Consultation {
   id: string;
@@ -36,18 +32,9 @@ export interface ConsultationResponse {
   total: number;
 }
 
-
 export interface ConsultationActionResponse {
   success: boolean;
   consultation: Consultation;
-}
-
-export interface AcceptConsultationRequest {
-  receivingClinician: string;
-}
-
-export interface EscalateConsultationRequest {
-  reason: string;
 }
 
 export interface RecordConsultationOutcomeRequest {

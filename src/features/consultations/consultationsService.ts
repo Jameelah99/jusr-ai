@@ -1,88 +1,81 @@
+
+import { apiRequest } from "../../services/api/apiClient";
+import { getReferrals } from "../referrals/referralsService";
 import type {
+  Consultation,
   ConsultationResponse,
   ConsultationActionResponse,
-  AcceptConsultationRequest,
-  EscalateConsultationRequest,
   RecordConsultationOutcomeRequest,
 } from "./consultations.types";
 
+function mapConsultation(
+  referral: Awaited<ReturnType<typeof getReferrals>>["referrals"][number]
+): Consultation {
+  const hasOutcome = Boolean(referral.outcome);
+
+  return {
+    id: referral.id,
+    caseId: referral.caseId,
+    patientLabel: referral.patientLabel,
+    screeningType: referral.screeningType,
+    priority: referral.priority,
+    referringFacility: referral.referringFacility,
+    receivingFacility: referral.receivingFacility,
+    referringClinician: referral.referringClinician,
+    receivingClinician: referral.receivingClinician,
+    reason: referral.referralReason,
+    status: hasOutcome ? "OUTCOME_RECORDED" : "ACCEPTED",
+    requestedAt: referral.createdAt,
+    acceptedAt: null,
+    outcomeRecordedAt: null,
+    outcome: referral.outcome,
+    outcomeNote: null,
+    escalationReason: null,
+  };
+}
+
 export async function getConsultations(): Promise<ConsultationResponse> {
-  const response = await fetch("/api/consultations");
+  const response = await getReferrals();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch consultations: ${response.status}`);
-  }
+  const consultations = response.referrals
+    .filter(
+      (referral) =>
+        referral.status === "accepted" ||
+        referral.status === "outcome_recorded"
+    )
+    .map(mapConsultation);
 
-  return response.json();
+  return {
+    consultations,
+    total: consultations.length,
+  };
 }
-
-export async function acceptConsultation(
-  consultationId: string,
-  payload: AcceptConsultationRequest
-): Promise<ConsultationActionResponse> {
-  const response = await fetch(
-    `/api/consultations/${consultationId}/accept`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to accept consultation: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-
-export async function escalateConsultation(
-  consultationId: string,
-  payload: EscalateConsultationRequest
-): Promise<ConsultationActionResponse> {
-  const response = await fetch(
-    `/api/consultations/${consultationId}/escalate`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to escalate consultation: ${response.status}`);
-  }
-
-  return response.json();
-}
-
 
 export async function recordConsultationOutcome(
-  consultationId: string,
+  referralId: string,
   payload: RecordConsultationOutcomeRequest
 ): Promise<ConsultationActionResponse> {
-  const response = await fetch(
-    `/api/consultations/${consultationId}/outcome`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
+  const outcome = [payload.outcome.trim(), payload.outcomeNote.trim()]
+    .filter(Boolean)
+    .join("\n\n");
+
+  await apiRequest(`/api/referrals/${referralId}/consultation`, {
+    method: "POST",
+    body: JSON.stringify({ outcome }),
+  });
+
+  const response = await getConsultations();
+
+  const consultation = response.consultations.find(
+    (item) => item.id === referralId
   );
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to record consultation outcome: ${response.status}`
-    );
+  if (!consultation) {
+    throw new Error("Consultation was saved, but the updated record could not be loaded.");
   }
 
-  return response.json();
+  return {
+    success: true,
+    consultation,
+  };
 }
-

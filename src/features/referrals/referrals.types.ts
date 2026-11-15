@@ -1,3 +1,4 @@
+
 export type ReferralPriority = "urgent" | "high" | "normal";
 
 export type ReferralStatus =
@@ -32,6 +33,58 @@ export interface Referral {
   rejectionReason: string | null;
   escalationReason: string | null;
   outcome: string | null;
+}
+
+export interface ReferralApiRecord {
+  id: string;
+  status: string;
+  case: {
+    id: string;
+    caseId: string;
+    priority: string;
+    status: string;
+    patient: {
+      id: string;
+      displayLabel: string;
+    };
+    screening: {
+      type: string;
+      outcome: string;
+      displayLabel: string;
+    } | null;
+  };
+  referringFacility: {
+    id: string;
+    name: string;
+  } | null;
+  receivingFacility: {
+    id: string;
+    name: string;
+  } | null;
+  receivingClinician: {
+    id: string;
+    displayName: string;
+  } | null;
+  referredById: string | null;
+  referredBy: {
+    id: string;
+    displayName: string;
+    role: string;
+  } | null;
+  reason: string;
+  rejectionReason: string | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  escalatedAt: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  consultation: {
+    id: string;
+    outcome: string;
+    recordedById: string;
+    recordedAt: string;
+  } | null;
 }
 
 export type ReferralEventType =

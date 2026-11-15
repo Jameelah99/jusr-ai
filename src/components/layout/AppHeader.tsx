@@ -1,4 +1,6 @@
-import { Search, Bell, Menu, ChevronDown } from "lucide-react";
+
+import { Search, Bell, Menu, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { useUser } from "../../context/UserContext";
 
@@ -28,7 +30,13 @@ function getInitials(name: string): string {
 }
 
 function AppHeader({ onMenuClick }: AppHeaderProps) {
-  const { activeUser, demoUsers, setActiveUserById } = useUser();
+  const { activeUser, logoutUser } = useUser();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logoutUser();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <header className="app-header">
@@ -43,61 +51,64 @@ function AppHeader({ onMenuClick }: AppHeaderProps) {
 
         <div className="header-search">
           <Search size={18} />
-
           <input
             type="search"
             placeholder="Search cases, patients..."
             aria-label="Search cases and patients"
           />
-
           <kbd>⌘ K</kbd>
         </div>
       </div>
 
       <div className="header-right">
-        {/* ACTIVE FACILITY */}
-        <div
-          className="facility-context"
-          aria-label={`Active facility: ${activeUser.facility.name}`}
-        >
-          <span className="facility-indicator" />
-          <span>{activeUser.facility.name}</span>
-        </div>
+        {activeUser && (
+          <>
+            <div
+              className="facility-context"
+              aria-label={`Facility ID: ${activeUser.facility.id || "Not assigned"}`}
+            >
+              <span className="facility-indicator" />
+              <span>
+                {activeUser.facility.name}
+              </span>
+            </div>
 
-        {/* NOTIFICATIONS */}
-        <button className="notification-button" aria-label="Notifications">
-          <Bell size={20} />
-          <span className="notification-dot" />
-        </button>
+            <button
+              className="notification-button"
+              aria-label="Notifications"
+            >
+              <Bell size={20} />
+              <span className="notification-dot" />
+            </button>
 
-        <div className="header-divider" />
+            <div className="header-divider" />
 
-        {/* DEMO USER SWITCHER */}
-        <div className="profile-button">
-          <div className="profile-avatar">{getInitials(activeUser.name)}</div>
+            <div className="profile-button">
+              <div className="profile-avatar">
+                {getInitials(activeUser.name)}
+              </div>
 
-          <div className="profile-details">
-            <span className="profile-name">{activeUser.name}</span>
+              <div className="profile-details">
+                <span className="profile-name">
+                  {activeUser.name}
+                </span>
+                <span className="profile-role">
+                  {formatRole(activeUser.role)}
+                </span>
+              </div>
+            </div>
 
-            <span className="profile-role">{formatRole(activeUser.role)}</span>
-          </div>
-
-          <select
-            className="profile-user-select"
-            value={activeUser.id}
-            onChange={(event) => setActiveUserById(event.target.value)}
-            aria-label="Switch demo user"
-            title="Switch demo user"
-          >
-            {demoUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} — {formatRole(user.role)}
-              </option>
-            ))}
-          </select>
-
-          <ChevronDown size={16} />
-        </div>
+            <button
+              type="button"
+              className="notification-button"
+              onClick={handleLogout}
+              aria-label="Log out"
+              title="Log out"
+            >
+              <LogOut size={19} />
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

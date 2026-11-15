@@ -1,4 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  acknowledgePatientInformation,
+  getPatientPortalContext,
+  reportPatientNotExplained,
+  requestPatientCallback,
+  submitPatientConfidence,
+  submitPatientUnderstanding,
+} from "./patientAccessService";
+import type { PatientPortalContext } from "./patientAccessService";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -15,6 +24,12 @@ type Language = "en" | "ar";
 const translations = {
   en: {
     secureAccess: "Secure patient access",
+    loading: "Loading your secure patient page...",
+    loadError:
+      "We could not load this patient page. Please check the link or contact your healthcare team.",
+    submitError: "Your responses could not be submitted. Please try again.",
+    facility: "Healthcare facility",
+    due: "Please complete the next step by",
     simulated: "SIMULATED DATA — This is a demonstration experience.",
     eyebrow: "YOUR PERSONAL CARE PAGE",
     hello: "Hello, Patient A",
@@ -80,6 +95,12 @@ const translations = {
 
   ar: {
     secureAccess: "وصول آمن للمريض",
+    loading: "جارٍ تحميل صفحة المريض الآمنة...",
+    loadError:
+      "تعذر تحميل صفحة المريض. يرجى التحقق من الرابط أو التواصل مع فريق الرعاية الصحية.",
+    submitError: "تعذر إرسال ردودك. يرجى المحاولة مرة أخرى.",
+    facility: "المنشأة الصحية",
+    due: "يرجى إكمال الخطوة التالية قبل",
     simulated: "بيانات تجريبية — هذه تجربة توضيحية.",
     eyebrow: "صفحة الرعاية الشخصية الخاصة بك",
     hello: "مرحباً، المريض أ",
@@ -142,27 +163,39 @@ const translations = {
   },
 } as const;
 
-function PatientPage() {
+interface PatientPageProps {
+  linkToken: string;
+  sessionToken: string | null;
+}
+
+function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
+  const [portal, setPortal] = useState<PatientPortalContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [language, setLanguage] = useState<Language>("en");
 
   const t = translations[language];
   const isArabic = language === "ar";
 
   const formatNumber = (value: number) => {
-  if (language === "ar") {
-    const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+    if (language === "ar") {
+      const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 
-    return String(value).replace(
-      /\d/g,
-      (digit) => arabicDigits[Number(digit)]
-    );
-  }
+      return String(value).replace(
+        /\d/g,
+        (digit) => arabicDigits[Number(digit)],
+      );
+    }
 
-  return String(value);
-};
+    return String(value);
+  };
 
   const [acknowledged, setAcknowledged] = useState(false);
-  const [understanding, setUnderstanding] = useState("");
+  const [understanding, setUnderstanding] = useState<
+    "Yes" | "Partly" | "No" | ""
+  >("");
   const [confidence, setConfidence] = useState<number | null>(null);
   const [notExplained, setNotExplained] = useState(false);
   const [callbackRequested, setCallbackRequested] = useState(false);
@@ -176,23 +209,76 @@ function PatientPage() {
     submittedAt: string;
   } | null>(null);
 
-  const canSubmit =
-    acknowledged && understanding !== "" && confidence !== null && !submitted;
-
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-
-    const patientResponse = {
-      acknowledged,
-      understanding,
-      confidence: confidence!,
-      notExplained,
-      callbackRequested,
-      submittedAt: new Date().toISOString(),
+  useEffect(() => {
+    let active = true;
+    async function loadPortal() {
+      try {
+        setLoading(true);
+        setLoadError("");
+        const data = await getPatientPortalContext(linkToken, sessionToken);
+        if (!active) return;
+        setPortal(data);
+        setAcknowledged(data.responses.acknowledged);
+        if (data.responses.understood !== null) {
+          setUnderstanding(data.responses.understood ? "Yes" : "No");
+        }
+        setConfidence(data.responses.confidence);
+        setNotExplained(data.responses.explanationStatus === "NOT_EXPLAINED");
+        setCallbackRequested(data.responses.callbackRequested);
+      } catch {
+        if (active) setLoadError(translations[language].loadError);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    loadPortal();
+    return () => {
+      active = false;
     };
+  }, [linkToken, sessionToken, language]);
 
-    setSubmittedResponse(patientResponse);
-    setSubmitted(true);
+  const canSubmit =
+    acknowledged &&
+    understanding !== "" &&
+    confidence !== null &&
+    !submitted &&
+    !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await acknowledgePatientInformation(linkToken, sessionToken);
+      await submitPatientUnderstanding(
+        linkToken,
+        sessionToken,
+        understanding === "Yes",
+      );
+      await submitPatientConfidence(linkToken, sessionToken, confidence!);
+      // R-31: Partly/No must create the NOT_EXPLAINED follow-up task.
+      if (notExplained || understanding !== "Yes") {
+        await reportPatientNotExplained(linkToken, sessionToken);
+      }
+      if (callbackRequested) {
+        await requestPatientCallback(linkToken, sessionToken);
+      }
+      const patientResponse = {
+        acknowledged,
+        understanding,
+        confidence: confidence!,
+        notExplained: notExplained || understanding !== "Yes",
+        callbackRequested,
+        submittedAt: new Date().toISOString(),
+      };
+      setSubmittedResponse(patientResponse);
+      setSubmitted(true);
+      setPortal(await getPatientPortalContext(linkToken, sessionToken));
+    } catch {
+      setSubmitError(t.submitError);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const progressSteps = [
@@ -201,6 +287,30 @@ function PatientPage() {
     { label: t.nextAppointment, completed: false, current: true },
     { label: t.careFollowUp, completed: false },
   ];
+
+  if (loading) {
+    return (
+      <main className="patient-page" dir="ltr">
+        <div className="patient-content">
+          <p role="status">{t.loading}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (loadError || !portal) {
+    return (
+      <main className="patient-page" dir="ltr">
+        <div className="patient-content">
+          <p role="alert">{loadError || t.loadError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  const displayName = portal.patient.displayLabel;
+  const screeningLabel = portal.screening?.displayLabel || t.resultReviewed;
+  const nextActionLabel = portal.nextAction?.label || t.confirmatoryTesting;
 
   return (
     <main
@@ -214,29 +324,29 @@ function PatientPage() {
         </div>
 
         <div
-  className="patient-language-switch"
-  role="group"
-  aria-label="Select language"
-  dir="ltr"
->
-  <button
-    type="button"
-    className={language === "en" ? "active" : ""}
-    onClick={() => setLanguage("en")}
-    aria-pressed={language === "en"}
-  >
-    English
-  </button>
+          className="patient-language-switch"
+          role="group"
+          aria-label="Select language"
+          dir="ltr"
+        >
+          <button
+            type="button"
+            className={language === "en" ? "active" : ""}
+            onClick={() => setLanguage("en")}
+            aria-pressed={language === "en"}
+          >
+            English
+          </button>
 
-  <button
-    type="button"
-    className={language === "ar" ? "active" : ""}
-    onClick={() => setLanguage("ar")}
-    aria-pressed={language === "ar"}
-  >
-    العربية
-  </button>
-</div>
+          <button
+            type="button"
+            className={language === "ar" ? "active" : ""}
+            onClick={() => setLanguage("ar")}
+            aria-pressed={language === "ar"}
+          >
+            العربية
+          </button>
+        </div>
 
         <div className="patient-header-secure">
           <ShieldCheck size={16} />
@@ -252,7 +362,7 @@ function PatientPage() {
       <div className="patient-content">
         <section className="patient-welcome">
           <span className="patient-eyebrow">{t.eyebrow}</span>
-          <h1>{t.hello}</h1>
+          <h1>{displayName || t.hello}</h1>
           <p>{t.welcome}</p>
         </section>
 
@@ -260,7 +370,7 @@ function PatientPage() {
           <div className="patient-section-heading">
             <div>
               <span className="patient-eyebrow">{t.screeningUpdate}</span>
-              <h2>{t.resultReviewed}</h2>
+              <h2>{screeningLabel}</h2>
             </div>
             <span className="patient-result-icon">
               <CheckCircle2 size={23} />
@@ -271,7 +381,7 @@ function PatientPage() {
 
           <div className="patient-urgency">
             <span>{t.nextStep}</span>
-            <strong>{t.confirmatoryTesting}</strong>
+            <strong>{nextActionLabel}</strong>
           </div>
         </section>
 
@@ -325,8 +435,18 @@ function PatientPage() {
             <h2>{t.whatHappensNext}</h2>
           </div>
 
-          <strong>{t.confirmatoryTesting}</strong>
-          <p>{t.nextDescription}</p>
+          <strong>{nextActionLabel}</strong>
+          <p>
+            {t.facility}: {portal.facility.name}. {t.nextDescription}
+          </p>
+          {portal.dueAt && (
+            <p>
+              {t.due}{" "}
+              {new Date(portal.dueAt).toLocaleDateString(
+                language === "ar" ? "ar" : "en",
+              )}
+            </p>
+          )}
         </section>
 
         <section className="patient-response-card">
@@ -355,18 +475,22 @@ function PatientPage() {
             <h3>{t.understandingQuestion}</h3>
 
             <div className="patient-choice-list">
-              {[t.yes, t.partly, t.no].map((option) => (
+              {[
+                { value: "Yes" as const, label: t.yes },
+                { value: "Partly" as const, label: t.partly },
+                { value: "No" as const, label: t.no },
+              ].map((option) => (
                 <button
                   type="button"
                   disabled={submitted}
-                  key={option}
+                  key={option.value}
                   className={`patient-choice-button ${
-                    understanding === option ? "selected" : ""
+                    understanding === option.value ? "selected" : ""
                   }`}
-                  onClick={() => setUnderstanding(option)}
-                  aria-pressed={understanding === option}
+                  onClick={() => setUnderstanding(option.value)}
+                  aria-pressed={understanding === option.value}
                 >
-                  {option}
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -428,7 +552,7 @@ function PatientPage() {
 
             {callbackRequested && (
               <p className="patient-feedback-message" role="status">
-                {t.callbackRecorded}
+                {t.callbackRequested}
               </p>
             )}
           </div>
@@ -440,9 +564,14 @@ function PatientPage() {
               disabled={!canSubmit}
               onClick={handleSubmit}
             >
-              {submitted ? t.submitted : t.submit}
+              {submitting ? t.loading : submitted ? t.submitted : t.submit}
             </button>
 
+            {submitError && (
+              <p className="patient-verification-error" role="alert">
+                {submitError}
+              </p>
+            )}
             {!submitted && (
               <p className="patient-submit-hint">{t.submitHint}</p>
             )}
@@ -454,7 +583,11 @@ function PatientPage() {
                 <div className="patient-submission-details">
                   <strong>{t.thankYou}</strong>
 
-                  <p>{t.submittedNotice}</p>
+                  <p>
+                    {language === "ar"
+                      ? "تم إرسال ردودك بنجاح إلى فريق الرعاية الصحية."
+                      : "Your responses have been successfully sent to your healthcare team."}
+                  </p>
 
                   <div className="patient-submission-summary">
                     <h4>{t.submittedResponses}</h4>
@@ -480,8 +613,9 @@ function PatientPage() {
                     <div>
                       <span>{t.confidenceRating}</span>
                       <strong dir="ltr">
-  {formatNumber(submittedResponse.confidence)} / {formatNumber(5)}
-</strong>
+                        {formatNumber(submittedResponse.confidence)} /{" "}
+                        {formatNumber(5)}
+                      </strong>
                     </div>
 
                     <div>

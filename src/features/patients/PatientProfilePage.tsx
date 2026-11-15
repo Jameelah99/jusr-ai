@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -21,56 +22,59 @@ function PatientProfilePage() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { activeUser } = useUser();
+
   const [profile, setProfile] = useState<PatientProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  async function loadProfile() {
-    setLoading(true);
-    setProfile(null);
-    setError(null);
+    async function loadProfile() {
+      setLoading(true);
+      setProfile(null);
+      setError(null);
 
-    if (!patientId) {
-      setLoading(false);
-      navigate("/patients", { replace: true });
-      return;
-    }
+      if (!activeUser) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const data = await getPatientProfile(
-        patientId,
-        activeUser.facility.id,
-      );
-
-      if (cancelled) return;
-
-      if (!data) {
-        setProfile(null);
+      if (!patientId) {
+        setLoading(false);
         navigate("/patients", { replace: true });
         return;
       }
 
-      setProfile(data);
-    } catch {
-      if (!cancelled) {
-        setError("Unable to load patient profile.");
-      }
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
+      try {
+        const data = await getPatientProfile(patientId);
+
+        if (cancelled) return;
+
+        if (!data) {
+          setProfile(null);
+          navigate("/patients", { replace: true });
+          return;
+        }
+
+        setProfile(data);
+      } catch {
+        if (!cancelled) {
+          setError("Unable to load patient profile.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-  }
 
-  void loadProfile();
+    void loadProfile();
 
-  return () => {
-    cancelled = true;
-  };
-}, [patientId, activeUser.facility.id, navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, activeUser, navigate]);
 
   if (loading) {
     return (
@@ -96,6 +100,13 @@ function PatientProfilePage() {
 
   const { patient, cases, screenings, communications, patientLink } = profile;
 
+  const activeCases = cases.filter(
+    (caseItem) =>
+      !["RESOLVED", "CLOSED"].includes(caseItem.status.toUpperCase()),
+  ).length;
+
+  const latestScreening = screenings[0]?.screeningType ?? "Not recorded";
+
   return (
     <main className="patient-profile-page">
       <button
@@ -114,10 +125,8 @@ function PatientProfilePage() {
 
         <div>
           <span className="patients-eyebrow">PATIENT RECORD</span>
-          <h1>
-            {patient.firstName} {patient.lastName}
-          </h1>
-          <p>{patient.patientNumber}</p>
+          <h1>{patient.displayLabel}</h1>
+          <p>{patient.id}</p>
         </div>
       </div>
 
@@ -130,7 +139,11 @@ function PatientProfilePage() {
         <div className="patient-profile-grid">
           <div>
             <span>Age</span>
-            <strong>{patient.age} years</strong>
+            <strong>
+              {patient.ageYears !== null
+                ? `${patient.ageYears} years`
+                : "Not recorded"}
+            </strong>
           </div>
 
           <div>
@@ -139,13 +152,8 @@ function PatientProfilePage() {
           </div>
 
           <div>
-            <span>Phone number</span>
-            <strong>{patient.phone}</strong>
-          </div>
-
-          <div>
-            <span>Facility</span>
-            <strong>{patient.facility}</strong>
+            <span>Record type</span>
+            <strong>{patient.isSynthetic ? "Simulated record" : "Not specified"}</strong>
           </div>
         </div>
       </section>
@@ -164,12 +172,12 @@ function PatientProfilePage() {
 
           <div>
             <span>Active cases</span>
-            <strong>{patient.activeCases}</strong>
+            <strong>{activeCases}</strong>
           </div>
 
           <div>
             <span>Latest screening</span>
-            <strong>{patient.latestScreening}</strong>
+            <strong>{latestScreening}</strong>
           </div>
         </div>
       </section>
@@ -201,7 +209,7 @@ function PatientProfilePage() {
                 }
               >
                 <div>
-                  <strong>{caseItem.id}</strong>
+                  <strong>{caseItem.caseNumber}</strong>
                   <span>{caseItem.screeningType}</span>
                 </div>
 
@@ -230,7 +238,6 @@ function PatientProfilePage() {
         )}
       </section>
 
-      {/* Screening History */}
       <section className="patient-profile-overview">
         <div className="patient-profile-section-heading">
           <CalendarDays size={18} />
@@ -255,7 +262,11 @@ function PatientProfilePage() {
 
                 <div>
                   <span>Date</span>
-                  <strong>{formatDateTime(screening.date)}</strong>
+                  <strong>
+                    {screening.date
+                      ? formatDateTime(screening.date)
+                      : "Not recorded"}
+                  </strong>
                 </div>
 
                 <div>
@@ -268,7 +279,6 @@ function PatientProfilePage() {
         )}
       </section>
 
-      {/* Communication History */}
       <section className="patient-profile-overview">
         <div className="patient-profile-section-heading">
           <MessageSquare size={18} />
@@ -282,7 +292,7 @@ function PatientProfilePage() {
             {communications.map((communication) => (
               <div
                 className="patient-profile-history-item"
-                key={communication.id}
+                key={`${communication.channel}-${communication.id}`}
               >
                 <div className="patient-profile-history-main">
                   <strong>{communication.channel}</strong>
@@ -313,7 +323,6 @@ function PatientProfilePage() {
         )}
       </section>
 
-      {/* Patient Link */}
       <section className="patient-profile-overview">
         <div className="patient-profile-section-heading">
           <Link2 size={18} />
@@ -332,16 +341,20 @@ function PatientProfilePage() {
 
           <div>
             <span>Expiry date</span>
-            <strong>{patientLink.expiresAt ?? "Not applicable"}</strong>
+            <strong>
+              {patientLink.expiresAt
+                ? formatDateTime(patientLink.expiresAt)
+                : "Not applicable"}
+            </strong>
           </div>
 
           <p>
             Patient links provide access to the patient's individual care
-            coordination page. Link activity shown here is demonstration data.
+            coordination page. Only link status and expiry information are
+            displayed here.
           </p>
         </div>
       </section>
-
     </main>
   );
 }

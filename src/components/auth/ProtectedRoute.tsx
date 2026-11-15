@@ -1,6 +1,5 @@
 
 import { Navigate, Outlet } from "react-router-dom";
-
 import { useUser } from "../../context/UserContext";
 import {
   hasPermission,
@@ -12,7 +11,15 @@ interface ProtectedRouteProps {
 }
 
 function ProtectedRoute({ permission }: ProtectedRouteProps) {
-  const { activeUser } = useUser();
+  const { activeUser, isLoading } = useUser();
+
+  if (isLoading) {
+    return <p>Loading your session...</p>;
+  }
+
+  if (!activeUser) {
+    return <Navigate to="/login" replace />;
+  }
 
   const isAuthorised = hasPermission(
     activeUser.role,

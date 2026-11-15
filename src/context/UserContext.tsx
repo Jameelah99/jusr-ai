@@ -1,127 +1,132 @@
+
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
 
-// Staff roles defined in the Jusr AI Developer Guide
+import {
+  getCurrentUser,
+  logout as authLogout,
+  type AuthUser,
+} from "../services/api/authService";
+
 export type UserRole =
   | "coordinator"
   | "referring_clinician"
   | "receiving_clinician"
   | "facility_administrator";
 
-// Facility information
 export interface Facility {
   id: string;
   name: string;
 }
 
-// Staff user information
 export interface DemoUser {
   id: string;
   name: string;
+  email: string;
   role: UserRole;
-  specialty?: string;
   facility: Facility;
   authorisedToClose: boolean;
 }
 
-// Available demo facilities
-export const demoFacilities: Facility[] = [
-  {
-    id: "demo-facility",
-    name: "Demo Facility",
-  },
-  {
-    id: "central-specialist",
-    name: "Central Specialist Hospital",
-  },
-];
-
-// Simulated staff accounts for the hackathon
-export const demoUsers: DemoUser[] = [
-  {
-    id: "user-001",
-    name: "Jane Doe",
-    role: "coordinator",
-    facility: demoFacilities[0],
-    authorisedToClose: false,
-  },
-  {
-    id: "user-002",
-    name: "Dr Williams",
-    role: "referring_clinician",
-    facility: demoFacilities[0],
-    authorisedToClose: true,
-  },
-  {
-    id: "user-003",
-    name: "Mary Johnson",
-    role: "coordinator",
-    facility: demoFacilities[1],
-    authorisedToClose: false,
-  },
-  {
-  id: "user-004",
-  name: "Dr Okafor",
-  role: "receiving_clinician",
-  specialty: "Endocrinology",
-  facility: demoFacilities[1],
-  authorisedToClose: true,
-},
-  {
-    id: "user-005",
-    name: "Facility Admin",
-    role: "facility_administrator",
-    facility: demoFacilities[0],
-    authorisedToClose: false,
-  },
-];
-
-// Context definition
 interface UserContextType {
-  activeUser: DemoUser;
-  demoUsers: DemoUser[];
-  setActiveUserById: (userId: string) => void;
+  activeUser: DemoUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  loginUser: (user: AuthUser) => void;
+  logoutUser: () => void;
 }
 
-const STORAGE_KEY = "jusr-demo-user";
-
-// Create context
 const UserContext = createContext<UserContextType | undefined>(
   undefined
 );
 
-// Context provider
-export function UserProvider({ children }: { children: ReactNode }) {
-  const [activeUser, setActiveUser] = useState<DemoUser>(() => {
-    const savedUserId = sessionStorage.getItem(STORAGE_KEY);
-
-    return (
-      demoUsers.find((user) => user.id === savedUserId) ??
-      demoUsers[0]
-    );
-  });
-
-  const setActiveUserById = (userId: string) => {
-    const selectedUser = demoUsers.find(
-      (user) => user.id === userId
-    );
-
-    if (selectedUser) {
-      setActiveUser(selectedUser);
-      sessionStorage.setItem(STORAGE_KEY, selectedUser.id);
-    }
+function mapRole(role: string): UserRole {
+  const roles: Record<string, UserRole> = {
+    COORDINATOR: "coordinator",
+    REFERRING_CLINICIAN: "referring_clinician",
+    RECEIVING_CLINICIAN: "receiving_clinician",
+    FACILITY_ADMIN: "facility_administrator",
   };
+
+  const mappedRole = roles[role];
+
+  if (!mappedRole) {
+    throw new Error("This account does not have a supported staff role.");
+  }
+
+  return mappedRole;
+}
+
+function mapUser(user: AuthUser): DemoUser {
+  return {
+    id: user.id,
+    name: user.displayName,
+    email: user.email,
+    role: mapRole(user.role),
+    facility: {
+      id: user.facilityId ?? "",
+      name: "Your facility",
+    },
+    authorisedToClose: false,
+  };
+}
+
+export function UserProvider({ children }: { children: ReactNode }) {
+  const [activeUser, setActiveUser] = useState<DemoUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function restoreSession() {
+      try {
+        const user = await getCurrentUser();
+
+        if (mounted) {
+          setActiveUser(mapUser(user));
+        }
+      } catch {
+        authLogout();
+
+        if (mounted) {
+          setActiveUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    restoreSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function loginUser(user: AuthUser) {
+    setActiveUser(mapUser(user));
+  }
+
+  function logoutUser() {
+    authLogout();
+    setActiveUser(null);
+  }
 
   return (
     <UserContext.Provider
       value={{
         activeUser,
-        demoUsers,
-        setActiveUserById,
+        isLoading,
+        isAuthenticated: !!activeUser,
+        loginUser,
+        logoutUser,
       }}
     >
       {children}
@@ -129,14 +134,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom hook for accessing user context
 export function useUser() {
   const context = useContext(UserContext);
 
   if (!context) {
-    throw new Error(
-      "useUser must be used within a UserProvider"
-    );
+    throw new Error("useUser must be used within a UserProvider");
   }
 
   return context;

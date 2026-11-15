@@ -1,4 +1,4 @@
-import { useRef } from "react";
+
 import { Printer, CheckCircle2, Clock } from "lucide-react";
 import type { AssistedResponse } from "./AssistedResponseForm";
 import "../assisted-response.css";
@@ -14,24 +14,31 @@ function PrintableResponseSummary({
   patientLabel,
   caseId,
 }: PrintableResponseSummaryProps) {
-  const summaryRef = useRef<HTMLDivElement>(null);
-
   const handlePrint = () => {
     window.print();
   };
 
-  const recordedDate = new Date(response.recordedAt);
+  const recordedDate = response.recordedAt
+    ? new Date(response.recordedAt)
+    : null;
 
-  const formattedDate = recordedDate.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const validRecordedDate =
+    recordedDate && !Number.isNaN(recordedDate.getTime());
 
-  const formattedTime = recordedDate.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = validRecordedDate
+    ? recordedDate.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "Not available";
+
+  const formattedTime = validRecordedDate
+    ? recordedDate.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Not available";
 
   const ResponseRow = ({
     label,
@@ -61,7 +68,7 @@ function PrintableResponseSummary({
         </button>
       </div>
 
-      <div className="print-summary-document" ref={summaryRef}>
+      <div className="print-summary-document">
         <header className="print-summary-header">
           <div>
             <span className="print-summary-brand">JUSR AI</span>
@@ -96,12 +103,16 @@ function PrintableResponseSummary({
 
           <ResponseRow
             label="Understanding"
-            value={response.understanding}
+            value={response.understanding || "Not recorded"}
           />
 
           <ResponseRow
             label="Confidence rating"
-            value={`${response.confidence} / 5`}
+            value={
+              response.confidence !== null
+                ? `${response.confidence} / 5`
+                : "Not recorded"
+            }
           />
 
           <ResponseRow
@@ -120,12 +131,12 @@ function PrintableResponseSummary({
 
           <ResponseRow
             label="Recorded by"
-            value={response.recordedBy}
+            value={response.recordedBy || "Not available"}
           />
 
           <ResponseRow
             label="Staff role"
-            value={response.staffRole}
+            value={response.staffRole || "Not available"}
           />
 
           <ResponseRow
@@ -141,6 +152,7 @@ function PrintableResponseSummary({
 
         <div className="print-summary-attribution">
           <Clock size={17} />
+
           <div>
             <strong>Recorded by staff on behalf of patient</strong>
             <p>
@@ -153,7 +165,9 @@ function PrintableResponseSummary({
 
         <footer className="print-summary-footer">
           <p>Jusr AI · Helping you stay informed about your care.</p>
-          <span>Demonstration record — synthetic data</span>
+          <span>
+            Demonstration record — synthetic data. Not a live hospital record.
+          </span>
         </footer>
       </div>
     </section>

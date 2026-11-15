@@ -13,9 +13,12 @@ import "./index.css";
 
 async function enableMocking() {
   // Only activate MSW in development mode.
-  if (!import.meta.env.DEV) {
-    return;
-  }
+ if (
+  !import.meta.env.DEV ||
+  import.meta.env.VITE_API_MODE === "backend"
+) {
+  return;
+}
 
   const { worker } = await import("./mocks/browser");
 

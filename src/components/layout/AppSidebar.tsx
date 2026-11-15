@@ -117,6 +117,10 @@ function AppSidebar({
 }: AppSidebarProps) {
   const { activeUser } = useUser();
 
+if (!activeUser) {
+  return null;
+}
+
   // Display only sections containing permitted navigation items
   const visibleNavigation = navigation
     .map((section) => ({
