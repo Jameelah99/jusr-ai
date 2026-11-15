@@ -20,11 +20,8 @@ import type {
   ClosureEvidenceItem,
   ClosureType,
 } from "./worklist.types";
-import {
-  updateDemoCase,
-} from "./demoState";
+import { updateDemoCase } from "./demoState";
 import { useUser } from "../../context/UserContext";
-
 
 function WorklistPage() {
   const { activeUser } = useUser();
@@ -144,7 +141,7 @@ function WorklistPage() {
     };
   }, [selectedCaseId]);
 
-    const handleCloseCase = async (
+  const handleCloseCase = async (
     caseId: string,
     closureType: ClosureType,
     reason: string,
@@ -211,14 +208,22 @@ function WorklistPage() {
 
   const filteredCases = useMemo(() => {
     return cases.filter((item) => {
-      const search = filters.search.toLowerCase().trim();
+      const search = (filters.search ?? "").toLowerCase().trim();
 
       const matchesSearch =
         !search ||
-        item.id.toLowerCase().includes(search) ||
-        item.patientLabel.toLowerCase().includes(search) ||
-        item.screeningType.toLowerCase().includes(search) ||
-        item.screeningResult.toLowerCase().includes(search);
+        String(item.id ?? "")
+          .toLowerCase()
+          .includes(search) ||
+        String(item.patientLabel ?? "")
+          .toLowerCase()
+          .includes(search) ||
+        String(item.screeningType ?? "")
+          .toLowerCase()
+          .includes(search) ||
+        String(item.screeningResult ?? "")
+          .toLowerCase()
+          .includes(search);
 
       const matchesPriority =
         filters.priority === "all" || item.priority === filters.priority;

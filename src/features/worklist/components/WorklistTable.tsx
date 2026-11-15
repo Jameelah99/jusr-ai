@@ -8,6 +8,20 @@ interface WorklistTableProps {
   onSelectCase: (caseItem: WorklistCase) => void;
 }
 
+function getShortId(id: string) {
+  return id.length > 12 ? `${id.slice(0, 8)}…` : id;
+}
+
+function formatDueDate(date: string | null) {
+  if (!date) return "Not set";
+
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
   return (
     <section className="worklist-table-panel">
@@ -17,9 +31,7 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
           <p>Review and manage cases requiring follow-up.</p>
         </div>
 
-        <span className="worklist-result-count">
-          {cases.length} cases
-        </span>
+        <span className="worklist-result-count">{cases.length} cases</span>
       </div>
 
       {cases.length === 0 ? (
@@ -28,7 +40,6 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
         </div>
       ) : (
         <>
-          {/* Desktop table */}
           <div className="worklist-table-scroll worklist-desktop-table">
             <table className="worklist-table">
               <thead>
@@ -54,7 +65,9 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
                     <td>
                       <div className="worklist-patient">
                         <strong>{item.patientLabel}</strong>
-                        <span>{item.id}</span>
+                        <span className="worklist-short-id" title={item.id}>
+                          {getShortId(item.id)}
+                        </span>
                       </div>
                     </td>
 
@@ -70,31 +83,23 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
                     </td>
 
                     <td>
-                      <span className="worklist-status">
-                        {item.status}
+                      <span className="worklist-status" title={item.status}>
+                        {item.status.replace(/_/g, " ")}
                       </span>
                     </td>
 
                     <td>
                       <span className="worklist-assignee">
                         <UserRound size={14} />
-                        {item.assignedTo ?? "Unassigned"}
+                        <span>{item.assignedTo ?? "Unassigned"}</span>
                       </span>
                     </td>
 
-                    <td>{item.nextAction}</td>
-
-                    <td>
-                      {item.dueDate
-                        ? new Date(
-                            `${item.dueDate}T00:00:00`,
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "Not set"}
+                    <td className="worklist-next-action">
+                      {item.nextAction}
                     </td>
+
+                    <td>{formatDueDate(item.dueDate)}</td>
 
                     <td>
                       <button
@@ -104,7 +109,7 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
                           event.stopPropagation();
                           onSelectCase(item);
                         }}
-                        aria-label={`View ${item.id}`}
+                        aria-label={`View case ${getShortId(item.id)}`}
                       >
                         <ChevronRight size={18} />
                       </button>
@@ -115,7 +120,6 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
             </table>
           </div>
 
-          {/* Mobile case cards */}
           <div className="worklist-mobile-cards">
             {cases.map((item) => (
               <button
@@ -127,7 +131,9 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
                 <div className="worklist-mobile-card-top">
                   <div className="worklist-patient">
                     <strong>{item.patientLabel}</strong>
-                    <span>{item.id}</span>
+                    <span className="worklist-short-id" title={item.id}>
+                      {getShortId(item.id)}
+                    </span>
                   </div>
 
                   <PriorityBadge priority={item.priority} />
@@ -141,7 +147,7 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
                 <div className="worklist-mobile-details">
                   <div>
                     <span>Status</span>
-                    <strong>{item.status}</strong>
+                    <strong>{item.status.replace(/_/g, " ")}</strong>
                   </div>
 
                   <div>
@@ -156,17 +162,7 @@ function WorklistTable({ cases, onSelectCase }: WorklistTableProps) {
 
                   <div>
                     <span>Due date</span>
-                    <strong>
-                      {item.dueDate
-                        ? new Date(
-                            `${item.dueDate}T00:00:00`,
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "Not set"}
-                    </strong>
+                    <strong>{formatDueDate(item.dueDate)}</strong>
                   </div>
                 </div>
 

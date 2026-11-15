@@ -6,6 +6,63 @@ import type {
   CaseTimelineEvent,
 } from "../../features/worklist/worklist.types";
 
+
+interface ApiWorklistCase {
+  id: string;
+  caseId: string;
+  patient?: {
+    id?: string;
+    displayLabel?: string;
+    ageYears?: number;
+    sex?: string;
+  } | null;
+  screening?: {
+    type?: string;
+    outcome?: string;
+    displayLabel?: string;
+  } | null;
+  priority?: string | null;
+  status?: string | null;
+  flags?: string[];
+  assignedCoordinator?: {
+    id?: string;
+    displayName?: string;
+  } | null;
+  owner?: {
+    id?: string;
+    displayName?: string;
+  } | null;
+  facility?: {
+    id?: string;
+    name?: string;
+  } | null;
+  nextAction?: {
+    label?: string;
+  } | null;
+  dueAt?: string | null;
+  updatedAt?: string | null;
+  specialty?: string | null;
+  routingStatus?: string | null;
+  routing?: {
+    status?: string;
+    specialty?: string;
+  } | null;
+  patientLabel?: string;
+  age?: number;
+  sex?: string;
+  screeningType?: string;
+  assignedTo?: string | null;
+}
+
+interface ApiWorklistResponse {
+  summary: WorklistResponse["summary"];
+  cases: ApiWorklistCase[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export async function getWorklist(
   _facilityId?: string,
   filters?: Partial<WorklistFilters>,
@@ -21,21 +78,59 @@ export async function getWorklist(
   }
 
   const query = params.toString();
-  const path = query ? `/api/worklist?${query}` : "/api/worklist";
+  const path = query
+    ? `/api/v1/worklist?${query}`
+    : "/api/v1/worklist";
 
-  const data = await apiRequest<WorklistResponse>(path);
+  const data = await apiRequest<ApiWorklistResponse>(path);
 
   return {
     ...data,
-    cases: data.cases.map((item) => ({
-      ...item,
-      priority:
-        item.priority.toLowerCase() as WorklistResponse["cases"][number]["priority"],
-      routingStatus:
-        item.routingStatus.toLowerCase() as WorklistResponse["cases"][number]["routingStatus"],
-    })),
+    cases: (data?.cases ?? []).map((item) => {
+      const priority = String(item.priority ?? "NORMAL").toLowerCase();
+
+      const routingStatus = item.routingStatus
+        ? item.routingStatus.toLowerCase()
+        : priority === "urgent"
+          ? "exception"
+          : "not_required";
+
+      return {
+        id: item.id,
+        patientId: item.patient?.id,
+        facilityId: item.facility?.id,
+        ownerStaffId: item.owner?.id ?? null,
+        patientLabel:
+          item.patientLabel ?? item.patient?.displayLabel ?? "Unknown patient",
+        age: item.age ?? item.patient?.ageYears ?? 0,
+        sex: item.sex ?? item.patient?.sex ?? "Unknown",
+        screeningType:
+          item.screeningType ?? item.screening?.type ?? "Not specified",
+        screeningResult:
+          item.screening?.displayLabel ??
+          item.screening?.outcome ??
+          "Not available",
+        priority: priority as WorklistResponse["cases"][number]["priority"],
+        status: item.status ?? "UNKNOWN",
+        specialty: item.specialty ?? null,
+        assignedTo:
+          item.assignedTo ?? item.assignedCoordinator?.displayName ?? null,
+        assignedClinicianSpecialty: item.routing?.specialty ?? null,
+        routingStatus:
+          routingStatus as WorklistResponse["cases"][number]["routingStatus"],
+        facility: item.facility?.name ?? "Unknown facility",
+        nextAction: item.nextAction?.label ?? "Review case",
+        dueDate: item.dueAt ? item.dueAt.slice(0, 10) : null,
+        lastUpdated: item.updatedAt ?? "",
+        flags: (item.flags ?? []).filter(
+          (flag): flag is "DATA_MISSING" | "OVERDUE" =>
+            flag === "DATA_MISSING" || flag === "OVERDUE",
+        ),
+      };
+    }),
   };
 }
+
 
 interface ApiCaseEvent {
   id: string;

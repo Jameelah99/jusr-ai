@@ -40,6 +40,10 @@ import {
   addDemoCaseDelayRecord,
 } from "../demoState";
 import "./delay-followup.css";
+import "../../ai/document-reader.css";
+import { aiService } from "../../ai/ai.service";
+import type { AIDocumentReadResult } from "../../ai/ai.types";
+import MessageDrafter from "../../ai/MessageDrafter";
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
@@ -79,12 +83,21 @@ function CaseDetails({
   const [selectedOwner, setSelectedOwner] = useState("");
 
   const [patientLinks, setPatientLinks] = useState<PatientLinkRecord[]>([]);
-  const [patientResponses, setPatientResponses] = useState<PatientResponseRecord[]>([]);
+  const [patientResponses, setPatientResponses] = useState<
+    PatientResponseRecord[]
+  >([]);
   const [generatedPatientLink, setGeneratedPatientLink] =
     useState<GeneratedPatientLink | null>(null);
   const [patientAccessLoading, setPatientAccessLoading] = useState(false);
   const [patientLinkGenerating, setPatientLinkGenerating] = useState(false);
   const [patientAccessError, setPatientAccessError] = useState("");
+
+  const [documentText, setDocumentText] = useState("");
+  const [documentReadResult, setDocumentReadResult] =
+    useState<AIDocumentReadResult | null>(null);
+  const [documentReadLoading, setDocumentReadLoading] = useState(false);
+  const [documentReadError, setDocumentReadError] = useState("");
+
   const [patientLinkCopyStatus, setPatientLinkCopyStatus] = useState("");
 
   const canManagePatientAccess =
@@ -207,6 +220,32 @@ function CaseDetails({
       cancelled = true;
     };
   }, [caseItem?.id, canManagePatientAccess]);
+
+  async function handleReadDocument() {
+    if (!caseItem || !documentText.trim()) return;
+
+    setDocumentReadLoading(true);
+    setDocumentReadError("");
+    setDocumentReadResult(null);
+
+    try {
+      const result = await aiService.readDocument({
+        caseId: caseItem.id,
+        documentId: `manual-${caseItem.id}`,
+        documentText: documentText.trim(),
+      });
+
+      setDocumentReadResult(result);
+    } catch (error) {
+      setDocumentReadError(
+        error instanceof Error
+          ? error.message
+          : "Unable to read this document.",
+      );
+    } finally {
+      setDocumentReadLoading(false);
+    }
+  }
 
   async function handleGeneratePatientLink() {
     if (!caseItem || isClosed || !canManagePatientAccess) return;
@@ -467,6 +506,100 @@ function CaseDetails({
             </div>
           </section>
 
+          {activeUser.role === "coordinator" && !isClosed && (
+            <section className="case-detail-section">
+              <MessageDrafter
+                caseId={caseItem.id}
+                priority={caseItem.priority}
+                disabled={isClosed}
+              />
+            </section>
+          )}
+
+          <section className="case-detail-section document-reader">
+            <h3 className="case-section-title">Document reader</h3>
+
+            <p className="document-reader-description">
+              Paste a synthetic screening or laboratory report below. The system
+              will extract available information for staff review.
+            </p>
+
+            <div className="document-reader-notice">
+              Simulated extraction — staff review and verification required. No
+              information will be added to the case automatically.
+            </div>
+
+            <div className="document-reader-input">
+              <label htmlFor="document-reader-input">Document text</label>
+              <textarea
+                id="document-reader-input"
+                value={documentText}
+                onChange={(event) => setDocumentText(event.target.value)}
+                placeholder="Paste synthetic document text here..."
+              />
+            </div>
+
+            <button
+              type="button"
+              className="document-reader-button"
+              onClick={handleReadDocument}
+              disabled={documentReadLoading || !documentText.trim()}
+            >
+              {documentReadLoading ? "Reading document..." : "Read document"}
+            </button>
+
+            {documentReadError && (
+              <p role="alert" className="document-reader-error">
+                {documentReadError}
+              </p>
+            )}
+
+            {documentReadResult && (
+              <div className="document-reader-results">
+                <h4>Extracted information</h4>
+
+                <div className="document-reader-fields">
+                  {Object.entries(documentReadResult.extractedFields).map(
+                    ([field, value]) => (
+                      <div className="document-reader-field" key={field}>
+                        <span>{field.replace(/([A-Z])/g, " $1")}</span>
+                        <strong>
+                          {value == null ? "Not found" : String(value)}
+                        </strong>
+                      </div>
+                    ),
+                  )}
+                </div>
+
+                <div className="document-reader-candidates">
+                  <h4>Patient match candidates</h4>
+
+                  {documentReadResult.patientMatchCandidates.length === 0 ? (
+                    <p>No patient match candidates found.</p>
+                  ) : (
+                    documentReadResult.patientMatchCandidates.map(
+                      (candidate) => (
+                        <div
+                          className="document-reader-candidate"
+                          key={candidate.patientId}
+                        >
+                          <strong>{candidate.displayName}</strong>
+                          <p>{candidate.matchReason}</p>
+                        </div>
+                      ),
+                    )
+                  )}
+                </div>
+
+                <div className="document-reader-results-notices">
+                  {documentReadResult.notices.map((notice, index) => (
+                    <p key={index}>{notice}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
           {caseItem.flags?.includes("OVERDUE") && !isClosed && (
             <section className="case-detail-section case-delay-followup">
               <h3 className="case-section-title">Reason for delay</h3>
@@ -560,58 +693,61 @@ function CaseDetails({
             </section>
           )}
 
-         {caseItem.priority === "urgent" && caseItem.specialty && (
-  <section className="case-routing-panel">
-    <h3 className="case-section-title">Clinical specialty routing</h3>
+          {caseItem.priority === "urgent" && caseItem.specialty && (
+            <section className="case-routing-panel">
+              <h3 className="case-section-title">Clinical specialty routing</h3>
 
-    <p>
-      Required specialty: <strong>{caseItem.specialty}</strong>
-    </p>
+              <p>
+                Required specialty: <strong>{caseItem.specialty}</strong>
+              </p>
 
-    <p>
-      Routing status: <strong>{caseItem.routingStatus}</strong>
-    </p>
+              <p>
+                Routing status: <strong>{caseItem.routingStatus}</strong>
+              </p>
 
-    {!isClosed &&
-      caseItem.routingStatus === "awaiting_acceptance" &&
-      caseItem.assignedTo === activeUser.name &&
-      activeUser.role === "receiving_clinician" && (
-        <button
-          type="button"
-          onClick={() => {
-            if (
-              window.confirm(
-                `Accept urgent case ${caseItem.id} assigned to you?`,
-              )
-            ) {
-              onAcceptUrgentCase(caseItem.id);
-            }
-          }}
-        >
-          Accept case
-        </button>
-      )}
+              {!isClosed &&
+                caseItem.routingStatus === "awaiting_acceptance" &&
+                caseItem.assignedTo === activeUser.name &&
+                activeUser.role === "receiving_clinician" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Accept urgent case ${caseItem.id} assigned to you?`,
+                        )
+                      ) {
+                        onAcceptUrgentCase(caseItem.id);
+                      }
+                    }}
+                  >
+                    Accept case
+                  </button>
+                )}
 
-    {!isClosed &&
-      (activeUser.role === "coordinator" ||
-        activeUser.role === "referring_clinician") && (
-        <button
-          type="button"
-          onClick={() => {
-            if (
-              window.confirm(
-                `Route urgent case ${caseItem.id} to an eligible ${caseItem.specialty} clinician?`,
-              )
-            ) {
-              onRouteUrgentCase(caseItem.id, caseItem.specialty ?? "");
-            }
-          }}
-        >
-          Route to eligible clinician
-        </button>
-      )}
-  </section>
-)}
+              {!isClosed &&
+                (activeUser.role === "coordinator" ||
+                  activeUser.role === "referring_clinician") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Route urgent case ${caseItem.id} to an eligible ${caseItem.specialty} clinician?`,
+                        )
+                      ) {
+                        onRouteUrgentCase(
+                          caseItem.id,
+                          caseItem.specialty ?? "",
+                        );
+                      }
+                    }}
+                  >
+                    Route to eligible clinician
+                  </button>
+                )}
+            </section>
+          )}
 
           {canCloseCase && !caseItem.closure && (
             <section className="case-detail-section">
@@ -867,8 +1003,8 @@ function CaseDetails({
             <section className="case-detail-section">
               <h3 className="case-section-title">Patient access</h3>
               <p>
-                Generate a secure link for the patient to review and respond.
-                A new link supersedes any previous active or locked link.
+                Generate a secure link for the patient to review and respond. A
+                new link supersedes any previous active or locked link.
               </p>
 
               {!isClosed && (
@@ -895,7 +1031,9 @@ function CaseDetails({
                     through your approved communication process.
                   </p>
                   <div className="case-detail-field">
-                    <label htmlFor="generated-patient-link">Secure patient link</label>
+                    <label htmlFor="generated-patient-link">
+                      Secure patient link
+                    </label>
                     <input
                       id="generated-patient-link"
                       type="text"
@@ -991,14 +1129,18 @@ function CaseDetails({
                           Response:{" "}
                           {response.value
                             ? Object.entries(response.value)
-                                .map(([key, value]) => `${key}: ${String(value)}`)
+                                .map(
+                                  ([key, value]) => `${key}: ${String(value)}`,
+                                )
                                 .join(", ")
                             : "No response value"}
                         </p>
                         {response.note && <p>Note: {response.note}</p>}
                         <small>
                           Recorded:{" "}
-                          {new Date(response.recordedAt).toLocaleString("en-GB")}
+                          {new Date(response.recordedAt).toLocaleString(
+                            "en-GB",
+                          )}
                           {response.recordedBy
                             ? ` · By ${response.recordedBy.displayName} (${response.recordedBy.role})`
                             : ""}

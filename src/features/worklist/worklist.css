@@ -185,6 +185,7 @@
   border-color: var(--color-teal);
 }
 
+
 /* CASE TABLE */
 
 .worklist-table-panel {
@@ -236,12 +237,21 @@
   text-align: left;
 }
 
+.worklist-table th:nth-child(1) { width: 15%; }
+.worklist-table th:nth-child(2) { width: 15%; }
+.worklist-table th:nth-child(3) { width: 9%; }
+.worklist-table th:nth-child(4) { width: 15%; }
+.worklist-table th:nth-child(5) { width: 15%; }
+.worklist-table th:nth-child(6) { width: 15%; }
+.worklist-table th:nth-child(7) { width: 11%; }
+.worklist-table th:nth-child(8) { width: 5%; }
+
 .worklist-table thead {
   background: #F8FAFC;
 }
 
 .worklist-table th {
-  padding: 13px 15px;
+  padding: 14px 12px;
   color: var(--color-text-secondary);
   font-size: 10px;
   font-weight: 600;
@@ -251,23 +261,30 @@
 }
 
 .worklist-table td {
-  padding: 15px;
+  padding: 15px 12px;
   color: var(--color-text-secondary);
   font-size: 11px;
+  line-height: 1.5;
   border-top: 1px solid var(--color-border);
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
-.worklist-table tbody tr:hover {
-  background: #FAFCFD;
+.worklist-clickable-row {
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.worklist-clickable-row:hover {
+  background: #F0F8F8;
 }
 
 .worklist-patient,
 .worklist-screening {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 120px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .worklist-patient strong,
@@ -275,6 +292,7 @@
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .worklist-patient span,
@@ -283,9 +301,16 @@
   font-size: 10px;
 }
 
+.worklist-patient .worklist-short-id {
+  font-family: monospace;
+  white-space: nowrap;
+  cursor: help;
+}
+
 .worklist-screening span {
-  max-width: 175px;
+  max-width: 100%;
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .worklist-priority-badge {
@@ -323,24 +348,41 @@
 }
 
 .worklist-status {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
   padding: 5px 8px;
   color: var(--color-text-secondary);
   background: var(--color-background);
   border-radius: var(--radius-full);
   font-size: 10px;
-  white-space: nowrap;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .worklist-assignee {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
+  min-width: 0;
+  line-height: 1.5;
 }
 
 .worklist-assignee svg {
+  flex-shrink: 0;
   color: var(--color-teal);
+}
+
+.worklist-assignee span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.worklist-next-action {
+  overflow-wrap: anywhere;
 }
 
 .worklist-view-button {
@@ -348,10 +390,12 @@
   height: 30px;
   display: grid;
   place-items: center;
+  margin: 0 auto;
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
   border-radius: 7px;
+  cursor: pointer;
 }
 
 .worklist-view-button:hover {
@@ -364,6 +408,7 @@
   text-align: center;
   color: var(--color-text-muted);
 }
+
 
 /* LOADING AND ERROR STATES */
 
