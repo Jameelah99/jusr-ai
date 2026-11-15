@@ -4,20 +4,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-001",
-      patientNumber: "PT-001",
-      firstName: "Patient",
-      lastName: "A",
-      age: 54,
+      displayLabel: "Patient A",
+      ageYears: 54,
       sex: "Female",
-      phone: "0803 XXX 1201",
-      facility: "Demo Facility",
-      activeCases: 1,
-      latestScreening: "Diabetes screening",
-      lastUpdated: "2026-11-07T09:30:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-001",
+        caseNumber: "CASE-001",
         screeningType: "Diabetes screening",
         screeningResult: "Abnormal screening result",
         priority: "urgent",
@@ -26,6 +21,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-07T08:30:00",
         lastUpdated: "2026-11-08T14:20:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -42,7 +38,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         id: "COM-001",
         channel: "Phone",
         description: "Staff-assisted patient response recorded.",
-        status: "Recorded",
+        status: "Delivered",
         date: "2026-11-08T14:20:00",
       },
     ],
@@ -54,20 +50,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-002",
-      patientNumber: "PT-002",
-      firstName: "Patient",
-      lastName: "B",
-      age: 42,
+      displayLabel: "Patient B",
+      ageYears: 42,
       sex: "Male",
-      phone: "0806 XXX 2302",
-      facility: "Demo Facility",
-      activeCases: 1,
-      latestScreening: "Hypertension screening",
-      lastUpdated: "2026-11-07T11:00:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-002",
+        caseNumber: "CASE-002",
         screeningType: "Hypertension screening",
         screeningResult: "Positive screening result",
         priority: "high",
@@ -76,6 +67,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-07T09:45:00",
         lastUpdated: "2026-11-07T11:00:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -96,20 +88,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-003",
-      patientNumber: "PT-003",
-      firstName: "Patient",
-      lastName: "C",
-      age: 61,
+      displayLabel: "Patient C",
+      ageYears: 61,
       sex: "Female",
-      phone: "0703 XXX 3403",
-      facility: "Demo Facility",
-      activeCases: 2,
-      latestScreening: "Hypertension screening",
-      lastUpdated: "2026-11-08T11:30:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-003",
+        caseNumber: "CASE-003",
         screeningType: "Diabetes screening",
         screeningResult: "Abnormal screening result",
         priority: "high",
@@ -118,9 +105,11 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-06T13:50:00",
         lastUpdated: "2026-11-06T14:20:00",
+        nextAction: null,
       },
       {
         id: "CASE-007",
+        caseNumber: "CASE-007",
         screeningType: "Hypertension screening",
         screeningResult: "Positive screening result",
         priority: "normal",
@@ -129,6 +118,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-08T10:45:00",
         lastUpdated: "2026-11-08T11:30:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -156,20 +146,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-004",
-      patientNumber: "PT-004",
-      firstName: "Patient",
-      lastName: "D",
-      age: 37,
+      displayLabel: "Patient D",
+      ageYears: 37,
       sex: "Male",
-      phone: "0805 XXX 4504",
-      facility: "Demo Facility",
-      activeCases: 1,
-      latestScreening: "Cardiovascular screening",
-      lastUpdated: "2026-11-07T11:00:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-004",
+        caseNumber: "CASE-004",
         screeningType: "Cardiovascular screening",
         screeningResult: "Positive screening result",
         priority: "normal",
@@ -178,6 +163,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-07T10:30:00",
         lastUpdated: "2026-11-07T11:00:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -198,20 +184,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-005",
-      patientNumber: "PT-005",
-      firstName: "Patient",
-      lastName: "E",
-      age: 49,
+      displayLabel: "Patient E",
+      ageYears: 49,
       sex: "Female",
-      phone: "0812 XXX 5605",
-      facility: "Demo Facility",
-      activeCases: 1,
-      latestScreening: "Hypertension screening",
-      lastUpdated: "2026-11-07T08:45:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-005",
+        caseNumber: "CASE-005",
         screeningType: "Hypertension screening",
         screeningResult: "Abnormal screening result",
         priority: "urgent",
@@ -220,6 +201,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-07T08:00:00",
         lastUpdated: "2026-11-07T08:45:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -240,20 +222,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-006",
-      patientNumber: "PT-006",
-      firstName: "Patient",
-      lastName: "F",
-      age: 58,
+      displayLabel: "Patient F",
+      ageYears: 58,
       sex: "Male",
-      phone: "0706 XXX 6706",
-      facility: "Demo Facility",
-      activeCases: 1,
-      latestScreening: "Diabetes screening",
-      lastUpdated: "2026-11-06T16:10:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-006",
+        caseNumber: "CASE-006",
         screeningType: "Diabetes screening",
         screeningResult: "Positive screening result",
         priority: "normal",
@@ -262,6 +239,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Demo Facility",
         createdAt: "2026-11-06T15:30:00",
         lastUpdated: "2026-11-06T16:10:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -278,7 +256,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         id: "COM-006",
         channel: "SMS",
         description: "Patient notification recorded in demonstration.",
-        status: "Recorded",
+        status: "Delivered",
         date: "2026-11-06T16:10:00",
       },
     ],
@@ -291,20 +269,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-007",
-      patientNumber: "PT-007",
-      firstName: "Patient",
-      lastName: "G",
-      age: 46,
+      displayLabel: "Patient G",
+      ageYears: 46,
       sex: "Female",
-      phone: "Not provided",
-      facility: "Central Specialist Hospital",
-      activeCases: 1,
-      latestScreening: "Diabetes screening",
-      lastUpdated: "2026-11-13T10:00:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-008",
+        caseNumber: "CASE-008",
         screeningType: "Diabetes screening",
         screeningResult: "Abnormal screening result",
         priority: "urgent",
@@ -313,6 +286,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Central Specialist Hospital",
         createdAt: "2026-11-13T10:00:00",
         lastUpdated: "2026-11-13T10:00:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -333,20 +307,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-008",
-      patientNumber: "PT-008",
-      firstName: "Patient",
-      lastName: "H",
-      age: 39,
+      displayLabel: "Patient H",
+      ageYears: 39,
       sex: "Male",
-      phone: "Not provided",
-      facility: "Central Specialist Hospital",
-      activeCases: 1,
-      latestScreening: "Cardiovascular screening",
-      lastUpdated: "2026-11-13T11:30:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-009",
+        caseNumber: "CASE-009",
         screeningType: "Cardiovascular screening",
         screeningResult: "Positive screening result",
         priority: "high",
@@ -355,6 +324,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Central Specialist Hospital",
         createdAt: "2026-11-13T11:30:00",
         lastUpdated: "2026-11-13T11:30:00",
+        nextAction: null,
       },
     ],
     screenings: [
@@ -375,20 +345,15 @@ export const patientProfilesMock: PatientProfileData[] = [
   {
     patient: {
       id: "PAT-009",
-      patientNumber: "PT-009",
-      firstName: "Patient",
-      lastName: "I",
-      age: 63,
+      displayLabel: "Patient I",
+      ageYears: 63,
       sex: "Female",
-      phone: "Not provided",
-      facility: "Central Specialist Hospital",
-      activeCases: 1,
-      latestScreening: "Hypertension screening",
-      lastUpdated: "2026-11-13T12:00:00",
+      isSynthetic: true,
     },
     cases: [
       {
         id: "CASE-010",
+        caseNumber: "CASE-010",
         screeningType: "Hypertension screening",
         screeningResult: "Positive screening result",
         priority: "normal",
@@ -397,6 +362,7 @@ export const patientProfilesMock: PatientProfileData[] = [
         facility: "Central Specialist Hospital",
         createdAt: "2026-11-13T12:00:00",
         lastUpdated: "2026-11-13T12:00:00",
+        nextAction: null,
       },
     ],
     screenings: [

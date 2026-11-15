@@ -1,5 +1,9 @@
 
-export type ConsultationStatus = "ACCEPTED" | "OUTCOME_RECORDED";
+export type ConsultationStatus =
+  | "REQUESTED"
+  | "ACCEPTED"
+  | "OUTCOME_RECORDED"
+  | "ESCALATED";
 
 export interface Consultation {
   id: string;

@@ -11,8 +11,8 @@ function ReferralTable({ referrals, onViewReferral }: ReferralTableProps) {
   const { activeUser } = useUser();
 
   const isIncomingView =
-    activeUser.role === "receiving_clinician" ||
-    (activeUser.role === "coordinator" &&
+    activeUser?.role === "receiving_clinician" ||
+    (activeUser?.role === "coordinator" &&
       activeUser.facility.name === "Central Specialist Hospital");
 
   if (!referrals.length) {
