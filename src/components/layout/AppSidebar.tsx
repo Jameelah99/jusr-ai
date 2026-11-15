@@ -46,7 +46,7 @@ const navigation: NavigationSection[] = [
     items: [
       {
         label: "Overview",
-        path: "/",
+        path: "/dashboard",
         icon: LayoutDashboard,
         permission: "dashboard",
       },
@@ -142,7 +142,7 @@ if (!activeUser) {
       >
         {/* BRAND */}
         <div className="sidebar-brand">
-          <NavLink to="/" className="brand-link" onClick={onClose}>
+          <NavLink to="/dashboard" className="brand-link" onClick={onClose}>
             <img src={logo} alt="Jusr AI" className="brand-logo" />
           </NavLink>
 
@@ -170,7 +170,7 @@ if (!activeUser) {
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    end={item.path === "/"}
+                    end={item.path === "/dashboard"}
                     onClick={onClose}
                     className={({ isActive }) =>
                       `nav-item ${isActive ? "nav-item-active" : ""}`

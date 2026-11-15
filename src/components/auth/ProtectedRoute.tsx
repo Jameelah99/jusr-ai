@@ -27,7 +27,7 @@ function ProtectedRoute({ permission }: ProtectedRouteProps) {
   );
 
   if (!isAuthorised) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
