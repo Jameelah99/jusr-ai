@@ -1,0 +1,206 @@
+
+/* =========================================
+   JUSR AI — PATIENT ACCESS
+========================================= */
+
+.patient-access-section > .case-section-title {
+  margin-bottom: 14px;
+}
+
+.patient-access-intro {
+  padding: 14px 15px;
+  margin-bottom: 15px;
+  background: #F0F8F8;
+  border: 1px solid #D8ECEB;
+  border-left: 3px solid #179FA2;
+  border-radius: 9px;
+}
+
+.patient-access-intro p {
+  color: #526174;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.patient-access-generate-button,
+.patient-access-copy-button {
+  width: 100%;
+  min-height: 43px;
+  padding: 11px 15px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.patient-access-generate-button {
+  color: #FFFFFF;
+  background: #087F82;
+  border: none;
+}
+
+.patient-access-generate-button:hover:not(:disabled) {
+  background: #06696C;
+}
+
+.patient-access-generate-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.patient-access-copy-button {
+  color: #087C78;
+  background: #E6F5F4;
+  border: 1px solid #B9E1DF;
+}
+
+.patient-access-copy-button:hover {
+  background: #D3EEEC;
+}
+
+.patient-access-generated {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 15px;
+  background: #F0F9F5;
+  border: 1px solid #CDE9D9;
+  border-radius: 10px;
+}
+
+.patient-access-generated > strong {
+  color: #087A3D;
+  font-size: 13px;
+}
+
+.patient-access-generated > p {
+  color: #526174;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.patient-access-generated .case-detail-field {
+  margin-bottom: 0;
+}
+
+.patient-access-generated input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px;
+  color: #243247;
+  background: #FFFFFF;
+  border: 1px solid #DCE3EA;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.patient-access-copy-status {
+  color: #087A3D !important;
+  font-weight: 600;
+}
+
+.patient-access-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #526174;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.patient-access-generated small {
+  color: #64748B;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.patient-access-history {
+  margin-top: 22px;
+}
+
+.patient-access-subheading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.patient-access-subheading strong {
+  color: #26364A;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.patient-access-subheading span {
+  min-width: 24px;
+  padding: 4px 8px;
+  color: #087C78;
+  background: #E6F5F4;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.patient-access-empty {
+  padding: 15px;
+  color: #718096;
+  background: #F8FAFC;
+  border: 1px dashed #DCE3EA;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.patient-access-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.patient-access-history li {
+  padding: 13px;
+  background: #FFFFFF;
+  border: 1px solid #E5EAF0;
+  border-radius: 9px;
+}
+
+.patient-access-status {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: #087C78;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.patient-access-history li p {
+  margin-top: 5px;
+  color: #526174;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.patient-access-history li small {
+  display: block;
+  margin-top: 8px;
+  color: #8491A2;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.patient-access-generate-button:focus-visible,
+.patient-access-copy-button:focus-visible {
+  outline: 3px solid rgba(23, 159, 162, 0.25);
+  outline-offset: 3px;
+}

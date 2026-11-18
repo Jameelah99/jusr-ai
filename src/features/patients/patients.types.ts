@@ -1,19 +1,17 @@
 export interface Patient {
   id: string;
-  patientNumber: string;
-  firstName: string;
-  lastName: string;
-  age: number;
-  sex: "Male" | "Female";
-  phone: string;
+  displayLabel: string;
+  ageYears: number | null;
+  sex: "M" | "F" | string;
+  isSynthetic: boolean;
   facility: string;
   activeCases: number;
   latestScreening: string;
-  lastUpdated: string;
+  lastUpdated: string | null;
 }
 
 export interface PatientFilters {
   search: string;
   facility: string;
-  sex: "all" | "Male" | "Female";
+  sex: "all" | "M" | "F";
 }

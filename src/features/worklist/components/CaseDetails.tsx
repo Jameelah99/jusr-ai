@@ -44,6 +44,9 @@ import "../../ai/document-reader.css";
 import { aiService } from "../../ai/ai.service";
 import type { AIDocumentReadResult } from "../../ai/ai.types";
 import MessageDrafter from "../../ai/MessageDrafter";
+import "./patient-access.css";
+
+
 
 interface CaseDetailsProps {
   caseItem: WorklistCase | null;
@@ -999,159 +1002,180 @@ function CaseDetails({
             </section>
           )}
 
-          {canManagePatientAccess && (
-            <section className="case-detail-section">
-              <h3 className="case-section-title">Patient access</h3>
+          
+{canManagePatientAccess && (
+  <section className="case-detail-section patient-access-section">
+    <h3 className="case-section-title">Patient access</h3>
+
+    <div className="patient-access-intro">
+      <p>
+        Generate a secure link for the patient to review and respond.
+        A new link supersedes any previous active or locked link.
+      </p>
+    </div>
+
+    {!isClosed && (
+      <button
+        type="button"
+        className="patient-access-generate-button"
+        onClick={handleGeneratePatientLink}
+        disabled={patientLinkGenerating}
+      >
+        {patientLinkGenerating
+          ? "Generating secure link..."
+          : "Generate patient link"}
+      </button>
+    )}
+
+    {generatedPatientLink && (
+      <div className="patient-access-generated" role="status">
+        <strong>
+          {generatedPatientLink.resent
+            ? "Patient link resent"
+            : "Patient link generated"}
+        </strong>
+
+        <p>
+          This secure link is displayed once. Copy and share it
+          through your approved communication process.
+        </p>
+
+        <div className="case-detail-field">
+          <label htmlFor="generated-patient-link">Secure patient link</label>
+          <input
+            id="generated-patient-link"
+            type="text"
+            readOnly
+            value={generatedPatientLink.url}
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+
+        <button
+          type="button"
+          className="patient-access-copy-button"
+          onClick={handleCopyPatientLink}
+        >
+          Copy patient link
+        </button>
+
+        {patientLinkCopyStatus && (
+          <p className="patient-access-copy-status" role="status">
+            {patientLinkCopyStatus}
+          </p>
+        )}
+
+        <div className="patient-access-meta">
+          <span>
+            Expires:{" "}
+            {new Date(generatedPatientLink.expiresAt).toLocaleString("en-GB")}
+          </span>
+          <span>
+            Identity verification{" "}
+            {generatedPatientLink.verificationRequired
+              ? "is required."
+              : "is not required for this patient."}
+          </span>
+        </div>
+
+        <small>{generatedPatientLink.note}</small>
+      </div>
+    )}
+
+    {patientAccessError && (
+      <p role="alert" className="case-closure-validation">
+        {patientAccessError}
+      </p>
+    )}
+
+    <div className="patient-access-history">
+      <div className="patient-access-subheading">
+        <strong>Patient link history</strong>
+        <span>{patientLinks.length}</span>
+      </div>
+
+      {patientAccessLoading ? (
+        <p className="patient-access-empty">Loading patient access history...</p>
+      ) : patientLinks.length === 0 ? (
+        <p className="patient-access-empty">
+          No patient links have been generated for this case.
+        </p>
+      ) : (
+        <ul>
+          {patientLinks.map((link) => (
+            <li key={link.id}>
+              <strong className="patient-access-status">
+                {link.status.replace(/_/g, " ")}
+              </strong>
               <p>
-                Generate a secure link for the patient to review and respond. A
-                new link supersedes any previous active or locked link.
+                Created: {new Date(link.createdAt).toLocaleString("en-GB")}
               </p>
-
-              {!isClosed && (
-                <button
-                  type="button"
-                  onClick={handleGeneratePatientLink}
-                  disabled={patientLinkGenerating}
-                >
-                  {patientLinkGenerating
-                    ? "Generating secure link..."
-                    : "Generate patient link"}
-                </button>
-              )}
-
-              {generatedPatientLink && (
-                <div className="case-detail-notice" role="status">
-                  <strong>
-                    {generatedPatientLink.resent
-                      ? "Patient link resent"
-                      : "Patient link generated"}
-                  </strong>
-                  <p>
-                    This secure link is displayed once. Copy and share it
-                    through your approved communication process.
-                  </p>
-                  <div className="case-detail-field">
-                    <label htmlFor="generated-patient-link">
-                      Secure patient link
-                    </label>
-                    <input
-                      id="generated-patient-link"
-                      type="text"
-                      readOnly
-                      value={generatedPatientLink.url}
-                      onFocus={(event) => event.currentTarget.select()}
-                    />
-                  </div>
-                  <button type="button" onClick={handleCopyPatientLink}>
-                    Copy patient link
-                  </button>
-                  {patientLinkCopyStatus && (
-                    <p role="status">{patientLinkCopyStatus}</p>
-                  )}
-                  <p>
-                    Expires:{" "}
-                    {new Date(generatedPatientLink.expiresAt).toLocaleString(
-                      "en-GB",
-                    )}
-                  </p>
-                  <p>
-                    Identity verification{" "}
-                    {generatedPatientLink.verificationRequired
-                      ? "is required."
-                      : "is not required for this patient."}
-                  </p>
-                  <small>{generatedPatientLink.note}</small>
-                </div>
-              )}
-
-              {patientAccessError && (
-                <p role="alert" className="case-closure-validation">
-                  {patientAccessError}
+              <p>
+                Expires: {new Date(link.expiresAt).toLocaleString("en-GB")}
+              </p>
+              {link.verifiedAt && (
+                <p>
+                  Verified: {new Date(link.verifiedAt).toLocaleString("en-GB")}
                 </p>
               )}
+              {link.lockedAt && (
+                <p>
+                  Locked: {new Date(link.lockedAt).toLocaleString("en-GB")}
+                </p>
+              )}
+              <small>Failed verification attempts: {link.failedAttempts}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
 
-              <div>
-                <strong>Patient link history</strong>
-                {patientAccessLoading ? (
-                  <p>Loading patient access history...</p>
-                ) : patientLinks.length === 0 ? (
-                  <p>No patient links have been generated for this case.</p>
-                ) : (
-                  <ul>
-                    {patientLinks.map((link) => (
-                      <li key={link.id}>
-                        <strong>{link.status.replace(/_/g, " ")}</strong>
-                        <p>
-                          Created:{" "}
-                          {new Date(link.createdAt).toLocaleString("en-GB")}
-                        </p>
-                        <p>
-                          Expires:{" "}
-                          {new Date(link.expiresAt).toLocaleString("en-GB")}
-                        </p>
-                        {link.verifiedAt && (
-                          <p>
-                            Verified:{" "}
-                            {new Date(link.verifiedAt).toLocaleString("en-GB")}
-                          </p>
-                        )}
-                        {link.lockedAt && (
-                          <p>
-                            Locked:{" "}
-                            {new Date(link.lockedAt).toLocaleString("en-GB")}
-                          </p>
-                        )}
-                        <small>
-                          Failed verification attempts: {link.failedAttempts}
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+    <div className="patient-access-history">
+      <div className="patient-access-subheading">
+        <strong>Recorded patient responses</strong>
+        <span>{patientResponses.length}</span>
+      </div>
 
-              <div>
-                <strong>Recorded patient responses</strong>
-                {patientResponses.length === 0 ? (
-                  <p>No patient responses recorded yet.</p>
-                ) : (
-                  <ul>
-                    {patientResponses.map((response) => (
-                      <li key={response.id}>
-                        <strong>{response.kind.replace(/_/g, " ")}</strong>
-                        <p>
-                          Source:{" "}
-                          {response.source === "STAFF_ASSISTED"
-                            ? "Recorded by staff on behalf of patient"
-                            : "Submitted by patient"}
-                        </p>
-                        <p>
-                          Response:{" "}
-                          {response.value
-                            ? Object.entries(response.value)
-                                .map(
-                                  ([key, value]) => `${key}: ${String(value)}`,
-                                )
-                                .join(", ")
-                            : "No response value"}
-                        </p>
-                        {response.note && <p>Note: {response.note}</p>}
-                        <small>
-                          Recorded:{" "}
-                          {new Date(response.recordedAt).toLocaleString(
-                            "en-GB",
-                          )}
-                          {response.recordedBy
-                            ? ` · By ${response.recordedBy.displayName} (${response.recordedBy.role})`
-                            : ""}
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-          )}
+      {patientResponses.length === 0 ? (
+        <p className="patient-access-empty">
+          No patient responses recorded yet.
+        </p>
+      ) : (
+        <ul>
+          {patientResponses.map((response) => (
+            <li key={response.id}>
+              <strong className="patient-access-status">
+                {response.kind.replace(/_/g, " ")}
+              </strong>
+              <p>
+                Source:{" "}
+                {response.source === "STAFF_ASSISTED"
+                  ? "Recorded by staff on behalf of patient"
+                  : "Submitted by patient"}
+              </p>
+              <p>
+                Response:{" "}
+                {response.value
+                  ? Object.entries(response.value)
+                      .map(([key, value]) => `${key}: ${String(value)}`)
+                      .join(", ")
+                  : "No response value"}
+              </p>
+              {response.note && <p>Note: {response.note}</p>}
+              <small>
+                Recorded:{" "}
+                {new Date(response.recordedAt).toLocaleString("en-GB")}
+                {response.recordedBy
+                  ? ` · By ${response.recordedBy.displayName} (${response.recordedBy.role})`
+                  : ""}
+              </small>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+)}
 
           <section className="case-detail-section">
             <h3 className="case-section-title">

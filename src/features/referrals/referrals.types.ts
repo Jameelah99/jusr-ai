@@ -1,4 +1,3 @@
-
 export type ReferralPriority = "urgent" | "high" | "normal";
 
 export type ReferralStatus =
@@ -6,7 +5,8 @@ export type ReferralStatus =
   | "accepted"
   | "rejected"
   | "escalated"
-  | "outcome_recorded";
+  | "outcome_recorded"
+  | "not_accepted_in_time";
 
 export interface Referral {
   id: string;

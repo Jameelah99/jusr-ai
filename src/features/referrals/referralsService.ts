@@ -9,8 +9,25 @@ import type {
   EscalateReferralRequest,
 } from "./referrals.types";
 
+
 function mapReferral(record: ReferralApiRecord): Referral {
-  const status = record.status.toLowerCase();
+  const rawStatus = record.status.toLowerCase();
+
+  let status: Referral["status"];
+
+  if (rawStatus === "sent" || rawStatus === "pending") {
+    status = record.escalated ? "escalated" : "pending";
+  } else if (rawStatus === "accepted") {
+    status = "accepted";
+  } else if (rawStatus === "declined" || rawStatus === "rejected") {
+    status = "rejected";
+  } else if (rawStatus === "not_accepted_in_time") {
+    status = "not_accepted_in_time";
+  } else if (rawStatus === "outcome_recorded") {
+    status = "outcome_recorded";
+  } else {
+    status = rawStatus as Referral["status"];
+  }
 
   return {
     id: record.id,
@@ -28,10 +45,7 @@ function mapReferral(record: ReferralApiRecord): Referral {
     referralReason: record.reason,
     clinicalSummary: "Not provided",
 
-    status:
-      record.escalated && status === "pending"
-        ? "escalated"
-        : (status as Referral["status"]),
+    status,
 
     createdAt: record.createdAt,
     responseDueAt: null,
@@ -42,6 +56,7 @@ function mapReferral(record: ReferralApiRecord): Referral {
     outcome: record.consultation?.outcome ?? null,
   };
 }
+
 
 function mapReferralResponse(
   records: ReferralApiRecord[]

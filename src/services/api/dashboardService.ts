@@ -73,6 +73,12 @@ export interface DashboardApiData {
     eventType: string;
     timestamp: string;
   }>;
+
+  careProgress?: Array<{
+  label: string;
+  count: number;
+  percentage: number;
+  }>;
 }
 
 export async function getDashboardSummary(): Promise<DashboardApiData> {

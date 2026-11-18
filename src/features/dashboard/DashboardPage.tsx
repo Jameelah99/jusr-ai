@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
@@ -9,7 +8,7 @@ import {
   Building2,
   UserCheck,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import StatCard from "./components/StatCard";
 import PriorityQueue from "./components/PriorityQueue";
@@ -21,7 +20,10 @@ import ReferralDetails from "../referrals/components/ReferralDetails";
 import type { Referral } from "../referrals/referrals.types";
 import { getReferrals } from "../referrals/referralsService";
 import { useUser } from "../../context/UserContext";
-import { getDashboardSummary, type DashboardApiData } from "../../services/api/dashboardService";
+import {
+  getDashboardSummary,
+  type DashboardApiData,
+} from "../../services/api/dashboardService";
 
 import type {
   DashboardSummary,
@@ -71,7 +73,10 @@ function mapRecentActivity(data: DashboardApiData): RecentActivityItem[] {
   }));
 }
 
-function mapCoordinatorDashboard(data: DashboardApiData): DashboardSummary {
+function mapCoordinatorDashboard(
+  data: DashboardApiData,
+  referrals: Referral[],
+): DashboardSummary {
   return {
     stats: {
       activeCases: data.stats?.activeCases ?? 0,
@@ -83,15 +88,19 @@ function mapCoordinatorDashboard(data: DashboardApiData): DashboardSummary {
     careProgress: [],
     recentActivity: mapRecentActivity(data),
     referrals: {
-      total: data.referrals?.total ?? 0,
-      accepted: data.referrals?.accepted ?? 0,
-      pending: data.referrals?.pending ?? 0,
-      rejected: data.referrals?.rejected ?? 0,
+      total: referrals.length,
+      accepted: referrals.filter((item) => item.status === "accepted").length,
+      pending: referrals.filter(
+        (item) => item.status === "pending" || item.status === "escalated",
+      ).length,
+      rejected: referrals.filter((item) => item.status === "rejected").length,
     },
   };
 }
 
-function mapReferringDashboard(data: DashboardApiData): ReferringClinicianDashboard {
+function mapReferringDashboard(
+  data: DashboardApiData,
+): ReferringClinicianDashboard {
   return {
     assignedCases: data.stats?.assignedCases ?? 0,
     casesAwaitingReview: 0,
@@ -137,9 +146,7 @@ function mapFacilityAdminDashboard(
             id: data.facility.id,
             facilityName: data.facility.name,
             connectionStatus:
-              data.connection?.status === "DEMO"
-                ? "connected"
-                : "pending",
+              data.connection?.status === "DEMO" ? "connected" : "pending",
             lastChecked: data.generatedAt
               ? new Date(data.generatedAt).toLocaleString()
               : "Not available",
@@ -152,6 +159,9 @@ function mapFacilityAdminDashboard(
 function DashboardPage() {
   const { activeUser } = useUser();
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [dashboard, setDashboard] = useState<
     | DashboardSummary
     | ReferringClinicianDashboard
@@ -162,10 +172,12 @@ function DashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
+  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
+    null,
+  );
 
   const loadDashboard = useCallback(async () => {
-        if (!activeUser) {
+    if (!activeUser) {
       setDashboard(null);
       setError("Please sign in to view your dashboard.");
       setLoading(false);
@@ -178,22 +190,31 @@ function DashboardPage() {
       const data = await getDashboardSummary();
 
       if (activeUser.role === "coordinator") {
-        setDashboard(mapCoordinatorDashboard(data));
+        const response = await getReferrals();
+        setDashboard(mapCoordinatorDashboard(data, response.referrals));
       } else if (activeUser.role === "referring_clinician") {
         setDashboard(mapReferringDashboard(data));
       } else if (activeUser.role === "receiving_clinician") {
         const response = await getReferrals();
 
-const incoming: IncomingReferral[] = response.referrals.map((item) => ({
-  id: item.id,
-  patientLabel: item.patientLabel,
-  screeningType: item.screeningType,
-  priority: item.priority,
-  referringFacility: item.referringFacility,
-  referralReason: item.referralReason,
-  receivedAt: item.createdAt,
-  status: item.status,
-}));
+        const incoming: IncomingReferral[] = response.referrals.flatMap((item) => {
+  if (item.status === "not_accepted_in_time") {
+    return [];
+  }
+
+  const status: IncomingReferral["status"] = item.status;
+
+  return [{
+    id: item.id,
+    patientLabel: item.patientLabel,
+    screeningType: item.screeningType,
+    priority: item.priority,
+    referringFacility: item.referringFacility,
+    referralReason: item.referralReason,
+    receivedAt: item.createdAt,
+    status,
+  }];
+});
         setDashboard(mapReceivingDashboard(data, incoming));
       } else if (activeUser.role === "facility_administrator") {
         setDashboard(mapFacilityAdminDashboard(data));
@@ -218,7 +239,9 @@ const incoming: IncomingReferral[] = response.referrals.map((item) => ({
   async function handleSelectReferral(referralId: string) {
     try {
       const response = await getReferrals();
-      const referral = response.referrals.find((item) => item.id === referralId);
+      const referral = response.referrals.find(
+        (item) => item.id === referralId,
+      );
 
       if (!referral) {
         setError("Referral details could not be found.");
@@ -241,12 +264,12 @@ const incoming: IncomingReferral[] = response.referrals.map((item) => ({
   }
 
   if (!activeUser) {
-  return (
-    <div className="dashboard-state">
-      <p>Please sign in to continue.</p>
-    </div>
-  );
-}
+    return (
+      <div className="dashboard-state">
+        <p>Please sign in to continue.</p>
+      </div>
+    );
+  }
 
   if (error || !dashboard) {
     return (
@@ -282,7 +305,16 @@ const incoming: IncomingReferral[] = response.referrals.map((item) => ({
       </div>
 
       {"stats" in dashboard && (
-        <CoordinatorDashboard dashboard={dashboard} />
+        <CoordinatorDashboard
+          dashboard={dashboard}
+          onSelectCase={(caseId) =>
+            navigate(`/worklist?caseId=${encodeURIComponent(caseId)}`, {
+              state: {
+                returnTo: `${location.pathname}${location.search}`,
+              },
+            })
+          }
+        />
       )}
 
       {"assignedCases" in dashboard && (
@@ -316,8 +348,10 @@ const incoming: IncomingReferral[] = response.referrals.map((item) => ({
 
 function CoordinatorDashboard({
   dashboard,
+  onSelectCase,
 }: {
   dashboard: DashboardSummary;
+  onSelectCase: (caseId: string) => void;
 }) {
   const { stats } = dashboard;
 
@@ -355,7 +389,10 @@ function CoordinatorDashboard({
       </section>
 
       <section className="dashboard-main-grid">
-        <PriorityQueue cases={dashboard.priorityCases} />
+        <PriorityQueue
+          cases={dashboard.priorityCases}
+          onSelectCase={onSelectCase}
+        />
         <CareProgress stages={dashboard.careProgress} />
       </section>
 
@@ -409,8 +446,12 @@ function ReferringClinicianDashboardView({
           dashboard.recentCases.map((item) => (
             <div className="dashboard-list-item" key={item.id}>
               <div>
-                <strong>{item.id} · {item.patientLabel}</strong>
-                <p>{item.screeningType} — {item.screeningResult}</p>
+                <strong>
+                  {item.id} · {item.patientLabel}
+                </strong>
+                <p>
+                  {item.screeningType} — {item.screeningResult}
+                </p>
                 <p>{item.nextAction}</p>
               </div>
 
@@ -499,7 +540,9 @@ function ReceivingClinicianDashboardView({
               }}
             >
               <div>
-                <strong>{referral.id} · {referral.patientLabel}</strong>
+                <strong>
+                  {referral.id} · {referral.patientLabel}
+                </strong>
                 <p>{referral.screeningType}</p>
                 <p>From: {referral.referringFacility}</p>
                 <p>{referral.referralReason}</p>

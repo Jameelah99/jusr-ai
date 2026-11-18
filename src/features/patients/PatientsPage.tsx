@@ -43,24 +43,29 @@ function PatientsPage() {
   );
 
   const filteredPatients = useMemo(() => {
-    const query = search.toLowerCase().trim();
+  const query = search.toLowerCase().trim();
 
-    return patients.filter((patient) => {
-      const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
+  return patients.filter((patient) => {
+    const matchesSearch =
+      !query ||
+      patient.displayLabel.toLowerCase().includes(query) ||
+      patient.id.toLowerCase().includes(query);
 
-      const matchesSearch =
-        !query ||
-        fullName.includes(query) ||
-        patient.patientNumber.toLowerCase().includes(query);
+    const matchesFacility =
+      facility === "all" || patient.facility === facility;
 
-      const matchesFacility =
-        facility === "all" || patient.facility === facility;
+    const normalizedSex =
+      patient.sex === "M"
+        ? "Male"
+        : patient.sex === "F"
+          ? "Female"
+          : patient.sex;
 
-      const matchesSex = sex === "all" || patient.sex === sex;
+    const matchesSex = sex === "all" || normalizedSex === sex;
 
-      return matchesSearch && matchesFacility && matchesSex;
-    });
-  }, [patients, search, facility, sex]);
+    return matchesSearch && matchesFacility && matchesSex;
+  });
+}, [patients, search, facility, sex]);
 
   const activePatients = patients.filter(
     (patient) => patient.activeCases > 0,

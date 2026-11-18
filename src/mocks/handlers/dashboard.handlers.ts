@@ -11,6 +11,7 @@ import type {
   CareStage,
   PriorityCase,
   RecentActivityItem,
+  IncomingReferral,
 } from "../../features/dashboard/dashboard.types";
 
 import {
@@ -209,10 +210,31 @@ export const dashboardHandlers = [
         return HttpResponse.json(referringClinicianDashboardMock);
 
       case "receiving_clinician": {
-        const incomingReferrals = referralsMock.filter(
-          (referral) =>
-            referral.receivingFacility === "Central Specialist Hospital",
-        );
+        const incomingReferrals: IncomingReferral[] = referralsMock
+          .filter(
+            (referral) =>
+              referral.receivingFacility === "Central Specialist Hospital",
+          )
+          .flatMap((referral) => {
+            if (referral.status === "not_accepted_in_time") {
+              return [];
+            }
+
+            const status: IncomingReferral["status"] = referral.status;
+
+            return [
+              {
+                id: referral.id,
+                patientLabel: referral.patientLabel,
+                screeningType: referral.screeningType,
+                priority: referral.priority,
+                referringFacility: referral.referringFacility,
+                referralReason: referral.referralReason,
+                receivedAt: referral.createdAt,
+                status,
+              },
+            ];
+          });
 
         const dashboardData: ReceivingClinicianDashboard = {
           pendingReferrals: incomingReferrals.filter(
@@ -229,20 +251,14 @@ export const dashboardHandlers = [
           ).length,
 
           referrals: incomingReferrals.map((referral) => ({
-            id: referral.id,
-            patientLabel: referral.patientLabel,
-            screeningType: referral.screeningType,
-            priority: referral.priority,
-            referringFacility: referral.referringFacility,
-            referralReason: referral.referralReason,
-            receivedAt: new Date(referral.createdAt).toLocaleString("en-GB", {
+            ...referral,
+            receivedAt: new Date(referral.receivedAt).toLocaleString("en-GB", {
               day: "2-digit",
               month: "short",
               year: "numeric",
               hour: "numeric",
               minute: "2-digit",
             }),
-            status: referral.status,
           })),
         };
 

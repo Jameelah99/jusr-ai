@@ -11,9 +11,12 @@ import { Link } from "react-router-dom";
 
 interface PriorityQueueProps {
   cases: PriorityCase[];
+  onSelectCase: (caseId: string) => void;
 }
 
-function PriorityQueue({ cases }: PriorityQueueProps) {
+function PriorityQueue({ cases, onSelectCase }: PriorityQueueProps) {
+  const visibleCases = cases.slice(0, 5);
+
   return (
     <section className="dashboard-panel">
       <div className="panel-heading">
@@ -28,13 +31,26 @@ function PriorityQueue({ cases }: PriorityQueueProps) {
       </div>
 
       <div className="priority-list">
-        {cases.length === 0 ? (
+        {visibleCases.length === 0 ? (
           <div className="empty-state">
             <p>No priority cases at the moment.</p>
           </div>
         ) : (
-          cases.map((item) => (
-            <article className="priority-item" key={item.id}>
+          visibleCases.map((item) => (
+            <article
+              className="priority-item"
+              key={item.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open case for ${item.patientLabel}`}
+              onClick={() => onSelectCase(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectCase(item.id);
+                }
+              }}
+            >
               <div className={`priority-indicator priority-${item.priority}`}>
                 <AlertCircle size={18} />
               </div>
@@ -51,23 +67,17 @@ function PriorityQueue({ cases }: PriorityQueueProps) {
                 <p>{item.screeningResult}</p>
 
                 <div className="priority-meta">
-                  <span>
-                    Next: {item.nextStep}
-                  </span>
+                  <span>Next: {item.nextStep}</span>
 
                   <span>
-                    <UserRound size={12} />
-                    {" "}
-                    {item.owner ?? "Unassigned"}
+                    <UserRound size={12} /> {item.owner ?? "Unassigned"}
                   </span>
                 </div>
               </div>
 
               <div className="priority-deadline">
                 <span>
-                  <Clock3 size={12} />
-                  {" "}
-                  {item.dueLabel}
+                  <Clock3 size={12} /> {item.dueLabel}
                 </span>
 
                 <small>{item.status}</small>

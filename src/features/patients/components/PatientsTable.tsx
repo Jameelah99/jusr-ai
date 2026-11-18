@@ -1,3 +1,4 @@
+
 import { Eye, UserRound } from "lucide-react";
 import type { Patient } from "../patients.types";
 import { formatDateTime } from "../../../utils/formatDateTime";
@@ -7,11 +8,7 @@ interface PatientsTableProps {
   onViewPatient: (patient: Patient) => void;
 }
 
-function PatientsTable({
-  patients,
-  onViewPatient,
-}: PatientsTableProps) {
-
+function PatientsTable({ patients, onViewPatient }: PatientsTableProps) {
   if (patients.length === 0) {
     return (
       <div className="patients-empty">
@@ -46,20 +43,24 @@ function PatientsTable({
                     <UserRound size={18} />
                   </div>
                   <div>
-                    <strong>
-                      {patient.firstName} {patient.lastName}
-                    </strong>
-                    <span>{patient.patientNumber}</span>
+                    <strong>{patient.displayLabel}</strong>
+                    <span>{patient.id}</span>
                   </div>
                 </div>
               </td>
 
               <td>
-                {patient.age} years
-                <span className="patients-muted">{patient.sex}</span>
+                {patient.ageYears ?? "—"} years
+                <span className="patients-muted">
+                  {patient.sex === "M"
+                    ? "Male"
+                    : patient.sex === "F"
+                      ? "Female"
+                      : patient.sex}
+                </span>
               </td>
 
-              <td>{patient.facility}</td>
+              <td>{patient.facility || "Not recorded"}</td>
 
               <td>
                 <span
@@ -71,16 +72,20 @@ function PatientsTable({
                 </span>
               </td>
 
-              <td>{patient.latestScreening}</td>
+              <td>{patient.latestScreening || "Not available"}</td>
 
-              <td>{formatDateTime(patient.lastUpdated)}</td>
+              <td>
+                {patient.lastUpdated
+                  ? formatDateTime(patient.lastUpdated)
+                  : "—"}
+              </td>
 
               <td>
                 <button
                   type="button"
                   className="patients-view-button"
                   onClick={() => onViewPatient(patient)}
-                  aria-label={`View profile for ${patient.firstName} ${patient.lastName}`}
+                  aria-label={`View profile for ${patient.displayLabel}`}
                 >
                   <Eye size={16} />
                   View
