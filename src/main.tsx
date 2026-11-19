@@ -11,28 +11,12 @@ import "@fontsource/inter/700.css";
 import App from "./App";
 import "./index.css";
 
-async function enableMocking() {
-  // Only activate MSW in development mode.
- if (
-  !import.meta.env.DEV ||
-  import.meta.env.VITE_API_MODE === "backend"
-) {
-  return;
-}
-
-  const { worker } = await import("./mocks/browser");
-
-  return worker.start();
-}
-
-enableMocking().then(() => {
-  ReactDOM.createRoot(
-    document.getElementById("root")!
-  ).render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </React.StrictMode>
-  );
-});
+ReactDOM.createRoot(
+  document.getElementById("root")!
+).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);

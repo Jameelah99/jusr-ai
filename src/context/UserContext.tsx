@@ -1,6 +1,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -12,12 +13,14 @@ import {
   logout as authLogout,
   type AuthUser,
 } from "../services/api/authService";
+import { listFacilities } from "../services/api/adminApi";
 
 export type UserRole =
   | "coordinator"
   | "referring_clinician"
   | "receiving_clinician"
-  | "facility_administrator";
+  | "facility_administrator"
+  | "national_admin";
 
 export interface Facility {
   id: string;
@@ -30,6 +33,7 @@ export interface DemoUser {
   email: string;
   role: UserRole;
   facility: Facility;
+  specialty: string | null;
   authorisedToClose: boolean;
 }
 
@@ -51,6 +55,7 @@ function mapRole(role: string): UserRole {
     REFERRING_CLINICIAN: "referring_clinician",
     RECEIVING_CLINICIAN: "receiving_clinician",
     FACILITY_ADMIN: "facility_administrator",
+    NATIONAL_ADMIN: "national_admin",
   };
 
   const mappedRole = roles[role];
@@ -72,13 +77,36 @@ function mapUser(user: AuthUser): DemoUser {
       id: user.facilityId ?? "",
       name: "Your facility",
     },
-    authorisedToClose: false,
+    specialty: user.specialty ?? null,
+    authorisedToClose: user.authorisedToClose,
   };
+}
+
+async function withFacilityName(user: DemoUser): Promise<DemoUser> {
+  if (!user.facility.id) return user;
+
+  try {
+    const facilities = await listFacilities();
+    const match = facilities.find((f) => f.id === user.facility.id);
+    if (!match) return user;
+    return { ...user, facility: { id: match.id, name: match.name } };
+  } catch {
+    return user;
+  }
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [activeUser, setActiveUser] = useState<DemoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const adoptUser = useCallback(async (user: AuthUser) => {
+    const mapped = mapUser(user);
+    setActiveUser(mapped);
+    const enriched = await withFacilityName(mapped);
+    setActiveUser((current) =>
+      current && current.id === enriched.id ? enriched : current
+    );
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -88,7 +116,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const user = await getCurrentUser();
 
         if (mounted) {
-          setActiveUser(mapUser(user));
+          await adoptUser(user);
         }
       } catch {
         authLogout();
@@ -108,10 +136,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [adoptUser]);
 
   function loginUser(user: AuthUser) {
-    setActiveUser(mapUser(user));
+    void adoptUser(user);
   }
 
   function logoutUser() {

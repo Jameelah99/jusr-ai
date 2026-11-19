@@ -5,6 +5,7 @@ import {
   reportPatientNotExplained,
   requestPatientCallback,
   submitPatientConfidence,
+  submitPatientReassurance,
   submitPatientUnderstanding,
 } from "./patientAccessService";
 import type { PatientPortalContext } from "./patientAccessService";
@@ -90,6 +91,10 @@ const translations = {
     helpDescription:
       "Your care team is available to explain your result and guide you through the next steps.",
     contactDetails: "Contact details will appear here.",
+    reassuranceQuestion: "Do you feel safely guided so far?",
+    reassuranceHint: "1 means not at all; 5 means very reassured.",
+    reassuranceSubmit: "Send reassurance rating",
+    reassuranceThanks: "Thank you — your rating has been recorded.",
     footer: "Jusr AI · Helping you stay informed about your care.",
   },
 
@@ -159,6 +164,10 @@ const translations = {
     helpDescription:
       "فريق الرعاية متاح لشرح نتيجتك وإرشادك خلال الخطوات التالية.",
     contactDetails: "ستظهر تفاصيل الاتصال هنا.",
+    reassuranceQuestion: "هل تشعر أنك في أيدٍ أمينة حتى الآن؟",
+    reassuranceHint: "١ تعني لا على الإطلاق؛ ٥ تعني مطمئن جداً.",
+    reassuranceSubmit: "إرسال تقييم الاطمئنان",
+    reassuranceThanks: "شكراً لك — تم تسجيل تقييمك.",
     footer: "Jusr AI · نساعدك على متابعة رعايتك الصحية.",
   },
 } as const;
@@ -167,6 +176,13 @@ interface PatientPageProps {
   linkToken: string;
   sessionToken: string | null;
 }
+
+const ARABIC_STEP_LABELS: Record<string, string> = {
+  RESULT_RECEIVED: "تم استلام النتيجة",
+  DOCTOR_REVIEWED: "راجع الطبيب النتيجة",
+  APPOINTMENT: "الموعد",
+  TREATMENT_OR_MONITORING: "العلاج أو المتابعة",
+};
 
 function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
   const [portal, setPortal] = useState<PatientPortalContext | null>(null);
@@ -200,6 +216,9 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
   const [notExplained, setNotExplained] = useState(false);
   const [callbackRequested, setCallbackRequested] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [reassuranceRating, setReassuranceRating] = useState<number | null>(null);
+  const [reassuranceSubmitted, setReassuranceSubmitted] = useState(false);
+  const [reassuranceSaving, setReassuranceSaving] = useState(false);
   const [submittedResponse, setSubmittedResponse] = useState<{
     acknowledged: boolean;
     understanding: string;
@@ -218,15 +237,20 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
         const data = await getPatientPortalContext(linkToken, sessionToken);
         if (!active) return;
         setPortal(data);
+        setLanguage(data.language === "ar" ? "ar" : "en");
         setAcknowledged(data.responses.acknowledged);
-        if (data.responses.understood !== null) {
-          setUnderstanding(data.responses.understood ? "Yes" : "No");
+        if (data.responses.understood === "YES") {
+          setUnderstanding("Yes");
+        } else if (data.responses.understood === "PARTLY") {
+          setUnderstanding("Partly");
+        } else if (data.responses.understood === "NO") {
+          setUnderstanding("No");
         }
         setConfidence(data.responses.confidence);
         setNotExplained(data.responses.explanationStatus === "NOT_EXPLAINED");
         setCallbackRequested(data.responses.callbackRequested);
       } catch {
-        if (active) setLoadError(translations[language].loadError);
+        if (active) setLoadError(translations.en.loadError);
       } finally {
         if (active) setLoading(false);
       }
@@ -235,7 +259,7 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
     return () => {
       active = false;
     };
-  }, [linkToken, sessionToken, language]);
+  }, [linkToken, sessionToken]);
 
   const canSubmit =
     acknowledged &&
@@ -253,7 +277,7 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
       await submitPatientUnderstanding(
         linkToken,
         sessionToken,
-        understanding === "Yes",
+        understanding === "Yes" ? "YES" : understanding === "Partly" ? "PARTLY" : "NO",
       );
       await submitPatientConfidence(linkToken, sessionToken, confidence!);
       // R-31: Partly/No must create the NOT_EXPLAINED follow-up task.
@@ -281,12 +305,19 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
     }
   };
 
-  const progressSteps = [
-    { label: t.screeningCompleted, completed: true },
-    { label: t.resultReviewedStep, completed: true },
-    { label: t.nextAppointment, completed: false, current: true },
-    { label: t.careFollowUp, completed: false },
-  ];
+  const handleReassurance = async () => {
+    if (reassuranceRating === null || reassuranceSubmitted) return;
+    setReassuranceSaving(true);
+    setSubmitError("");
+    try {
+      await submitPatientReassurance(linkToken, sessionToken, reassuranceRating);
+      setReassuranceSubmitted(true);
+    } catch {
+      setSubmitError(t.submitError);
+    } finally {
+      setReassuranceSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -311,6 +342,22 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
   const displayName = portal.patient.displayLabel;
   const screeningLabel = portal.screening?.displayLabel || t.resultReviewed;
   const nextActionLabel = portal.nextAction?.label || t.confirmatoryTesting;
+
+  const progressSteps = portal.progress?.steps.length
+    ? portal.progress.steps.map((step, index) => ({
+        label:
+          language === "ar"
+            ? ARABIC_STEP_LABELS[step.key] ?? step.label
+            : step.label,
+        completed: step.done,
+        current: index === portal.progress.currentStep && !step.done,
+      }))
+    : [
+        { label: t.screeningCompleted, completed: true, current: false },
+        { label: t.resultReviewedStep, completed: true, current: false },
+        { label: t.nextAppointment, completed: false, current: true },
+        { label: t.careFollowUp, completed: false, current: false },
+      ];
 
   return (
     <main
@@ -382,6 +429,9 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
           <div className="patient-urgency">
             <span>{t.nextStep}</span>
             <strong>{nextActionLabel}</strong>
+            {portal.urgencyText && (
+              <p className="patient-urgency-note">{portal.urgencyText}</p>
+            )}
           </div>
         </section>
 
@@ -638,6 +688,55 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
           </div>
         </section>
 
+        {portal.reassuranceAvailable && (
+          <section className="patient-response-card patient-reassurance-card">
+            <span className="patient-eyebrow">{t.yourResponse}</span>
+            <h2>{t.reassuranceQuestion}</h2>
+            <p className="patient-response-hint">{t.reassuranceHint}</p>
+
+            <div className="patient-confidence-list">
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  type="button"
+                  key={rating}
+                  disabled={reassuranceSubmitted || reassuranceSaving}
+                  className={`patient-confidence-button ${
+                    reassuranceRating === rating ? "selected" : ""
+                  }`}
+                  onClick={() => setReassuranceRating(rating)}
+                  aria-pressed={reassuranceRating === rating}
+                  aria-label={`Reassurance rating ${rating}`}
+                >
+                  {formatNumber(rating)}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="patient-submit-button"
+              disabled={
+                reassuranceRating === null ||
+                reassuranceSubmitted ||
+                reassuranceSaving
+              }
+              onClick={() => void handleReassurance()}
+            >
+              {reassuranceSubmitted
+                ? t.submitted
+                : reassuranceSaving
+                  ? t.loading
+                  : t.reassuranceSubmit}
+            </button>
+
+            {reassuranceSubmitted && (
+              <p className="patient-feedback-message" role="status">
+                {t.reassuranceThanks}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="patient-contact-card">
           <div className="patient-contact-icon">
             <Phone size={20} />
@@ -646,7 +745,15 @@ function PatientPage({ linkToken, sessionToken }: PatientPageProps) {
           <div>
             <h3>{t.needHelp}</h3>
             <p>{t.helpDescription}</p>
-            <span>{t.contactDetails}</span>
+            <span>{portal.contact?.name ?? portal.contact?.facility ?? t.contactDetails}</span>
+            {portal.contact?.facility && portal.contact.name && (
+              <span>{portal.contact.facility}</span>
+            )}
+            {portal.contact?.phone && (
+              <strong dir="ltr" className="patient-contact-phone">
+                {portal.contact.phone}
+              </strong>
+            )}
           </div>
         </section>
       </div>

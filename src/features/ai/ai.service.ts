@@ -1,21 +1,23 @@
 
-import { apiRequest } from "../../services/api/apiClient";
-
+import { apiEnvelope, apiRequest } from "../../services/api/apiClient";
 import type {
-  AISuggestion,
-  AISuggestionCreateRequest,
+  AISuggestionRecord,
+  PagedResult,
+} from "../../services/api/v6.types";
+import type {
   AIApproveRequest,
-  AIRejectRequest,
   AIDocumentReadRequest,
   AIDocumentReadResult,
-  SuggestionStatus,
+  AIRejectRequest,
+  AIMessageDraftRequest,
+  AIMessageDraftResult,
+  AISuggestionCreateRequest,
   BackendAIKind,
   CaseSummaryPayload,
-  AIMessageDraftRequest,
-AIMessageDraftResult,
+  SuggestionStatus,
 } from "./ai.types";
 
-const AI_BASE = "/api/v1/ai";
+const AI_BASE = "/api/ai/suggestions";
 
 export interface AIListFilters {
   page?: number;
@@ -25,54 +27,57 @@ export interface AIListFilters {
   caseId?: string;
 }
 
+export interface ApprovedCaseSummary extends AISuggestionRecord {
+  approvedBy: string | null;
+}
+
 export const aiService = {
-  // List AI suggestions for the signed-in staff member.
   async listSuggestions(
     filters: AIListFilters = {}
-  ): Promise<AISuggestion[]> {
+  ): Promise<PagedResult<AISuggestionRecord>> {
     const params = new URLSearchParams();
 
-    if (filters.page !== undefined) {
-      params.set("page", String(filters.page));
-    }
-    if (filters.pageSize !== undefined) {
+    if (filters.page !== undefined) params.set("page", String(filters.page));
+    if (filters.pageSize !== undefined)
       params.set("pageSize", String(filters.pageSize));
-    }
     if (filters.kind) params.set("kind", filters.kind);
     if (filters.status) params.set("status", filters.status);
     if (filters.caseId) params.set("caseId", filters.caseId);
 
     const query = params.toString();
-
-    return apiRequest<AISuggestion[]>(
-      `${AI_BASE}/suggestions${query ? `?${query}` : ""}`
+    const response = await apiEnvelope<AISuggestionRecord[]>(
+      `${AI_BASE}${query ? `?${query}` : ""}`
     );
+    return {
+      items: response.data,
+      total: Number(response.meta.total ?? response.data.length),
+      page: Number(response.meta.page ?? 1),
+      pageSize: Number(response.meta.pageSize ?? response.data.length),
+    };
   },
 
-  // Create a suggestion. The backend only permits the AI service account.
+  // Only the AI service account may submit suggestions.
   async createSuggestion(
     request: AISuggestionCreateRequest
-  ): Promise<AISuggestion> {
-    return apiRequest<AISuggestion>(`${AI_BASE}/suggestions`, {
+  ): Promise<AISuggestionRecord> {
+    return apiRequest<AISuggestionRecord>(AI_BASE, {
       method: "POST",
       body: JSON.stringify(request),
     });
   },
 
-  // Retrieve one suggestion.
-  async getSuggestion(id: string): Promise<AISuggestion> {
-    return apiRequest<AISuggestion>(
-      `${AI_BASE}/suggestions/${encodeURIComponent(id)}`
+  async getSuggestion(id: string): Promise<AISuggestionRecord> {
+    return apiRequest<AISuggestionRecord>(
+      `${AI_BASE}/${encodeURIComponent(id)}`
     );
   },
 
-  // Approve a suggestion, optionally editing a message draft.
   async approveSuggestion(
     id: string,
     request: AIApproveRequest = {}
-  ): Promise<AISuggestion> {
-    return apiRequest<AISuggestion>(
-      `${AI_BASE}/suggestions/${encodeURIComponent(id)}/approve`,
+  ): Promise<AISuggestionRecord> {
+    return apiRequest<AISuggestionRecord>(
+      `${AI_BASE}/${encodeURIComponent(id)}/approve`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -80,13 +85,12 @@ export const aiService = {
     );
   },
 
-  // Rejecting requires a reason.
   async rejectSuggestion(
     id: string,
     request: AIRejectRequest
-  ): Promise<AISuggestion> {
-    return apiRequest<AISuggestion>(
-      `${AI_BASE}/suggestions/${encodeURIComponent(id)}/reject`,
+  ): Promise<AISuggestionRecord> {
+    return apiRequest<AISuggestionRecord>(
+      `${AI_BASE}/${encodeURIComponent(id)}/reject`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -94,35 +98,26 @@ export const aiService = {
     );
   },
 
-  // Retrieve an approved case summary.
-  async getCaseSummary(
-    caseId: string
-  ): Promise<CaseSummaryPayload> {
-    return apiRequest<CaseSummaryPayload>(
-      `${AI_BASE}/suggestions/cases/${encodeURIComponent(caseId)}/summary`
+  async getCaseSummary(caseId: string): Promise<ApprovedCaseSummary> {
+    return apiRequest<ApprovedCaseSummary>(
+      `${AI_BASE}/cases/${encodeURIComponent(caseId)}/summary`
     );
   },
 
-  // Document reading: frontend method is ready.
-  // The matching backend endpoint still needs to be implemented.
   async readDocument(
     request: AIDocumentReadRequest
   ): Promise<AIDocumentReadResult> {
-    return apiRequest<AIDocumentReadResult>(
-      `${AI_BASE}/suggestions/document-read`,
-      {
-        method: "POST",
-        body: JSON.stringify(request),
-      }
-    );
+    return apiRequest<AIDocumentReadResult>(`${AI_BASE}/document-read`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
   },
 
-    // Generate a simulated message draft for coordinator approval.
-    async createMessageDraft(
+  async createMessageDraft(
     request: AIMessageDraftRequest
   ): Promise<AIMessageDraftResult> {
     return apiRequest<AIMessageDraftResult>(
-      `${AI_BASE}/suggestions/message-draft`,
+      `${AI_BASE}/message-draft`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -130,3 +125,5 @@ export const aiService = {
     );
   },
 };
+
+export type { CaseSummaryPayload };

@@ -486,3 +486,71 @@
   gap: 6px;
   width: fit-content;
 }
+/* V6 additions */
+
+.patients-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.patient-profile-case-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.9fr 1fr 1fr 1fr 0.9fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.patient-profile-case-button > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.patient-profile-case-button > div > span {
+  color: #8995a5;
+  font-size: 10px;
+}
+
+.patient-profile-case-button > div > strong {
+  color: #334155;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.patient-profile-case-button > div:first-child > span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.patient-profile-case-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #179fa2;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.patient-profile-muted {
+  margin: 12px 0 0;
+  color: #8995a5;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1000px) {
+  .patient-profile-case-button {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .patient-profile-case-button > div {
+    min-width: 130px;
+  }
+}

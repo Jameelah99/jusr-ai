@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { aiService } from "./ai.service";
+import { sendMessage } from "../../services/api/messagesApi";
 import type { AIMessageDraftResult } from "./ai.types";
 import "./message-drafter.css";
 
@@ -8,12 +9,14 @@ interface MessageDrafterProps {
   caseId: string;
   priority: string;
   disabled?: boolean;
+  onChanged?: () => void;
 }
 
 export default function MessageDrafter({
   caseId,
   priority,
   disabled = false,
+  onChanged,
 }: MessageDrafterProps) {
   const [language, setLanguage] = useState<"en" | "ar">("en");
   const [channel, setChannel] = useState<"SMS" | "EMAIL">("SMS");
@@ -23,6 +26,9 @@ export default function MessageDrafter({
   const [editedBody, setEditedBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [decisionLoading, setDecisionLoading] = useState(false);
+  const [approvedMessageId, setApprovedMessageId] = useState<string | null>(null);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -40,6 +46,8 @@ export default function MessageDrafter({
     setError("");
     setNotice("");
     setDraft(null);
+    setApprovedMessageId(null);
+    setSent(false);
 
     try {
       const result = await aiService.createMessageDraft({
@@ -70,15 +78,24 @@ export default function MessageDrafter({
     setNotice("");
 
     try {
-      await aiService.approveSuggestion(draft.id, {
+      const approved = await aiService.approveSuggestion(draft.id, {
         editedBody: editedBody.trim(),
         note: "Coordinator reviewed and approved the message draft.",
       });
 
+      const messageId =
+        typeof approved.applied?.messageId === "string"
+          ? approved.applied.messageId
+          : null;
+
+      setApprovedMessageId(messageId);
       setDraft({ ...draft, status: "APPROVED" });
       setNotice(
-        "Draft approved and recorded. No SMS or email has been sent."
+        messageId
+          ? "Draft approved. Send it to complete the notification step."
+          : "Draft approved and recorded."
       );
+      onChanged?.();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to approve the draft."
@@ -105,12 +122,36 @@ export default function MessageDrafter({
 
       setDraft({ ...draft, status: "REJECTED" });
       setNotice("Draft rejected and the decision has been recorded.");
+      onChanged?.();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to reject the draft."
       );
     } finally {
       setDecisionLoading(false);
+    }
+  }
+
+  async function handleSend() {
+    if (!approvedMessageId) return;
+
+    setSendLoading(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await sendMessage(approvedMessageId);
+      setSent(true);
+      setNotice(
+        "Message sent through the simulated provider. Delivery is recorded in the case history."
+      );
+      onChanged?.();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to send the message."
+      );
+    } finally {
+      setSendLoading(false);
     }
   }
 
@@ -204,7 +245,7 @@ export default function MessageDrafter({
         <div className="message-drafter-review">
           <div className="message-drafter-review-meta">
             <span>{draft.payload.channel}</span>
-            <span>{draft.status}</span>
+            <span>{sent ? "SENT" : draft.status}</span>
             <span>{draft.payload.templateVersion}</span>
           </div>
 
@@ -239,6 +280,19 @@ export default function MessageDrafter({
             </div>
           )}
 
+          {draft.status === "APPROVED" && approvedMessageId && !sent && (
+            <div className="message-drafter-actions">
+              <button
+                type="button"
+                className="message-drafter-approve"
+                onClick={handleSend}
+                disabled={sendLoading}
+              >
+                {sendLoading ? "Sending..." : "Send approved message"}
+              </button>
+            </div>
+          )}
+
           {draft.status !== "PENDING" && (
             <button
               type="button"
@@ -246,6 +300,8 @@ export default function MessageDrafter({
               onClick={() => {
                 setDraft(null);
                 setEditedBody("");
+                setApprovedMessageId(null);
+                setSent(false);
                 setNotice("");
                 setError("");
               }}

@@ -4,9 +4,10 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || ""
 ).replace(/\/$/, "");
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   data: T;
+  meta?: Record<string, unknown>;
   error?: {
     code: string;
     message: string;
@@ -53,6 +54,20 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
+  const response = await apiEnvelope<T>(path, options);
+  return response.data;
+}
+
+export interface ApiEnvelopeResult<T> {
+  success: boolean;
+  data: T;
+  meta: Record<string, unknown>;
+}
+
+export async function apiEnvelope<T>(
+  path: string,
+  options: ApiRequestOptions = {}
+): Promise<ApiEnvelopeResult<T>> {
   const { authenticated = true, headers, ...requestOptions } = options;
 
   const requestHeaders = new Headers(headers);
@@ -108,5 +123,9 @@ export async function apiRequest<T>(
   }
 
   const apiResult = result as ApiResponse<T>;
-  return apiResult.data;
+  return {
+    success: true,
+    data: apiResult.data,
+    meta: apiResult.meta ?? {},
+  };
 }

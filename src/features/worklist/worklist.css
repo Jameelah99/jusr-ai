@@ -1020,6 +1020,7 @@
   min-width: 125px;
   min-height: 42px;
   padding: 11px 20px;
+  margin-top: 10px;
   color: #FFFFFF;
   background: #009802;
   border: 1px solid #009802;
@@ -1461,5 +1462,132 @@
   .case-closure-evidence #contact-outcome,
   .case-closure-evidence #contact-notes {
     font-size: 13px;
+  }
+}
+
+/* =========================================
+   WORKLIST — V6 TABS, SUMMARY & TABLE EXTRAS
+========================================= */
+
+.wl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--color-border);
+  background: #FBFCFD;
+}
+
+.wl-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.wl-tab:hover {
+  background: var(--color-background);
+}
+
+.wl-tab.is-active {
+  color: var(--color-primary);
+  background: var(--color-teal-light);
+  border-color: rgba(23, 159, 162, 0.25);
+}
+
+.wl-tab-count {
+  padding: 1px 7px;
+  color: var(--color-text-secondary);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wl-patient-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wl-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
+  background: var(--color-teal-light);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wl-mono {
+  font-family: monospace;
+}
+
+.wl-status-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wl-time-overdue {
+  color: var(--color-danger);
+}
+
+.wl-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wl-checkbox input {
+  accent-color: var(--color-teal);
+}
+
+.wl-stat-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+}
+
+.wl-stat-neutral { color: var(--color-info); background: var(--color-info-bg); }
+.wl-stat-danger { color: var(--color-danger); background: var(--color-danger-bg); }
+.wl-stat-warning { color: #946313; background: var(--color-warning-bg); }
+.wl-stat-info { color: var(--color-teal); background: var(--color-teal-light); }
+
+@media (max-width: 1200px) {
+  .worklist-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .worklist-search {
+    grid-column: 1 / -1;
   }
 }

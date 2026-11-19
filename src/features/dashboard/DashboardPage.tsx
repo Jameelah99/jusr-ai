@@ -1,616 +1,660 @@
+import "./dashboard.css";
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
-  AlertCircle,
-  Clock,
-  Users,
-  CheckCircle,
+  AlertTriangle,
+  ArrowRight,
   Building2,
-  UserCheck,
+  Clock,
+  FileWarning,
+  HelpCircle,
+  MessageSquareWarning,
+  Plug,
+  ShieldCheck,
+  UserX,
+  Users,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-
-import StatCard from "./components/StatCard";
-import PriorityQueue from "./components/PriorityQueue";
-import CareProgress from "./components/CareProgress";
-import ReferralOverview from "./components/ReferralOverview";
-import RecentActivity from "./components/RecentActivity";
-import ReferralDetails from "../referrals/components/ReferralDetails";
-
-import type { Referral } from "../referrals/referrals.types";
-import { getReferrals } from "../referrals/referralsService";
+import { useNavigate } from "react-router-dom";
+import StatusBadge from "../../components/ui/StatusBadge";
+import { PriorityBadge } from "../../components/ui/FlagBadges";
+import {
+  ErrorState,
+  LoadingState,
+} from "../../components/ui/StateViews";
 import { useUser } from "../../context/UserContext";
 import {
   getDashboardSummary,
-  type DashboardApiData,
-} from "../../services/api/dashboardService";
+  type DashboardSummary,
+} from "../../services/api/dashboardApi";
+import { formatDateTime, formatTimeLeft, humanize, initialsOf } from "../../utils/format";
 
-import type {
-  DashboardSummary,
-  ReferringClinicianDashboard,
-  ReceivingClinicianDashboard,
-  FacilityAdministratorDashboard,
-  PriorityCase,
-  RecentActivityItem,
-  IncomingReferral,
-} from "./dashboard.types";
+const ROLE_TITLES: Record<string, string> = {
+  coordinator: "Coordinator Dashboard",
+  referring_clinician: "Referring Clinician Dashboard",
+  receiving_clinician: "Receiving Clinician Dashboard",
+  facility_administrator: "Facility Administrator Dashboard",
+  national_admin: "National Administrator Dashboard",
+};
 
-import "./dashboard.css";
+const ROLE_HINTS: Record<string, string> = {
+  coordinator: "Own the pathway: classify, notify, refer and close.",
+  referring_clinician: "Your assigned cases and the closures waiting for your sign-off.",
+  receiving_clinician: "Urgent cases routed to you and referrals waiting for a decision.",
+  facility_administrator: "Staff access and the facility connection only — no patient data.",
+  national_admin: "Cross-facility oversight, settings and the demo clock.",
+};
 
-function formatDueDate(value?: string | null): string {
-  if (!value) return "No due date";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "No due date";
-
-  if (date.getTime() < Date.now()) return "Overdue";
-
-  return `Due ${date.toLocaleDateString()}`;
-}
-
-function mapPriorityCases(data: DashboardApiData): PriorityCase[] {
-  return (data.priorityCases ?? []).map((item) => ({
-    id: item.id,
-    patientLabel: item.patientLabel,
-    screeningResult: item.screeningResult ?? "Not recorded",
-    nextStep: item.nextStep ?? "No next action recorded",
-    owner: item.owner ?? "Unassigned",
-    dueLabel: formatDueDate(item.dueAt),
-    priority: item.priority.toLowerCase() as PriorityCase["priority"],
-    status: item.status,
-  }));
-}
-
-function mapRecentActivity(data: DashboardApiData): RecentActivityItem[] {
-  return (data.recentActivity ?? []).map((item) => ({
-    id: item.id,
-    description: item.description,
-    actor: item.actor,
-    timestampLabel: item.timestamp
-      ? new Date(item.timestamp).toLocaleString()
-      : "Time unavailable",
-  }));
-}
-
-function mapCoordinatorDashboard(
-  data: DashboardApiData,
-  referrals: Referral[],
-): DashboardSummary {
-  return {
-    stats: {
-      activeCases: data.stats?.activeCases ?? 0,
-      urgentCases: data.stats?.urgentCases ?? 0,
-      overdueCases: data.stats?.overdueCases ?? 0,
-      unassignedCases: data.stats?.unassignedCases ?? 0,
-    },
-    priorityCases: mapPriorityCases(data),
-    careProgress: [],
-    recentActivity: mapRecentActivity(data),
-    referrals: {
-      total: referrals.length,
-      accepted: referrals.filter((item) => item.status === "accepted").length,
-      pending: referrals.filter(
-        (item) => item.status === "pending" || item.status === "escalated",
-      ).length,
-      rejected: referrals.filter((item) => item.status === "rejected").length,
-    },
-  };
-}
-
-function mapReferringDashboard(
-  data: DashboardApiData,
-): ReferringClinicianDashboard {
-  return {
-    assignedCases: data.stats?.assignedCases ?? 0,
-    casesAwaitingReview: 0,
-    referralsPending: data.referrals?.pending ?? 0,
-    recentCases: (data.priorityCases ?? []).map((item) => ({
-      id: item.caseId,
-      patientLabel: item.patientLabel,
-      screeningType: item.screeningType ?? "Screening",
-      screeningResult: item.screeningResult ?? "Not recorded",
-      priority: item.priority.toLowerCase() as "urgent" | "high" | "normal",
-      status: item.status,
-      nextAction: item.nextStep ?? "No next action recorded",
-      dueLabel: formatDueDate(item.dueAt),
-    })),
-  };
-}
-
-function mapReceivingDashboard(
-  data: DashboardApiData,
-  referrals: IncomingReferral[],
-): ReceivingClinicianDashboard {
-  return {
-    pendingReferrals: data.referrals?.pending ?? 0,
-    acceptedReferrals: data.referrals?.accepted ?? 0,
-    urgentReferrals: data.referrals?.urgent ?? 0,
-    referrals,
-  };
-}
-
-function mapFacilityAdminDashboard(
-  data: DashboardApiData,
-): FacilityAdministratorDashboard {
-  return {
-    staff: {
-      totalStaff: data.staffAccess?.totalStaff ?? 0,
-      activeStaff: data.staffAccess?.activeStaff ?? 0,
-      inactiveStaff: data.staffAccess?.inactiveStaff ?? 0,
-      pendingAccess: 0,
-    },
-    facilityConnections: data.facility
-      ? [
-          {
-            id: data.facility.id,
-            facilityName: data.facility.name,
-            connectionStatus:
-              data.connection?.status === "DEMO" ? "connected" : "pending",
-            lastChecked: data.generatedAt
-              ? new Date(data.generatedAt).toLocaleString()
-              : "Not available",
-          },
-        ]
-      : [],
-  };
-}
-
-function DashboardPage() {
+export default function DashboardPage() {
   const { activeUser } = useUser();
-
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const [dashboard, setDashboard] = useState<
-    | DashboardSummary
-    | ReferringClinicianDashboard
-    | ReceivingClinicianDashboard
-    | FacilityAdministratorDashboard
-    | null
-  >(null);
-
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(
-    null,
-  );
+  const [error, setError] = useState("");
 
-  const loadDashboard = useCallback(async () => {
-    if (!activeUser) {
-      setDashboard(null);
-      setError("Please sign in to view your dashboard.");
-      setLoading(false);
-      return;
-    }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError(null);
-
-      const data = await getDashboardSummary();
-
-      if (activeUser.role === "coordinator") {
-        const response = await getReferrals();
-        setDashboard(mapCoordinatorDashboard(data, response.referrals));
-      } else if (activeUser.role === "referring_clinician") {
-        setDashboard(mapReferringDashboard(data));
-      } else if (activeUser.role === "receiving_clinician") {
-        const response = await getReferrals();
-
-        const incoming: IncomingReferral[] = response.referrals.flatMap((item) => {
-  if (item.status === "not_accepted_in_time") {
-    return [];
-  }
-
-  const status: IncomingReferral["status"] = item.status;
-
-  return [{
-    id: item.id,
-    patientLabel: item.patientLabel,
-    screeningType: item.screeningType,
-    priority: item.priority,
-    referringFacility: item.referringFacility,
-    referralReason: item.referralReason,
-    receivedAt: item.createdAt,
-    status,
-  }];
-});
-        setDashboard(mapReceivingDashboard(data, incoming));
-      } else if (activeUser.role === "facility_administrator") {
-        setDashboard(mapFacilityAdminDashboard(data));
-      } else {
-        setDashboard(null);
-        setError("Your account role does not have a dashboard view.");
-      }
+      setSummary(await getDashboardSummary());
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to load dashboard data.",
-      );
-      setDashboard(null);
+      setError(err instanceof Error ? err.message : "Unable to load the dashboard.");
     } finally {
       setLoading(false);
     }
-  }, [activeUser]);
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    void load();
+  }, [load]);
 
-  async function handleSelectReferral(referralId: string) {
-    try {
-      const response = await getReferrals();
-      const referral = response.referrals.find(
-        (item) => item.id === referralId,
-      );
-
-      if (!referral) {
-        setError("Referral details could not be found.");
-        return;
-      }
-
-      setSelectedReferral(referral);
-    } catch {
-      setError("Unable to load referral details.");
-    }
-  }
+  if (!activeUser) return null;
 
   if (loading) {
     return (
-      <div className="dashboard-state">
-        <div className="loading-spinner" />
-        <p>Loading your dashboard...</p>
-      </div>
+      <main className="dashboard-page">
+        <LoadingState message="Loading your dashboard…" />
+      </main>
     );
   }
 
-  if (!activeUser) {
+  if (error || !summary) {
     return (
-      <div className="dashboard-state">
-        <p>Please sign in to continue.</p>
-      </div>
+      <main className="dashboard-page">
+        <ErrorState message={error || "The dashboard could not be loaded."} onRetry={() => void load()} />
+      </main>
     );
   }
 
-  if (error || !dashboard) {
-    return (
-      <div className="dashboard-state dashboard-error">
-        <AlertCircle size={28} />
-        <h2>Dashboard unavailable</h2>
-        <p>{error ?? "No dashboard data was returned."}</p>
-        <button onClick={loadDashboard}>Try again</button>
-      </div>
-    );
-  }
-
-  const roleTitles = {
-    coordinator: "Coordinator Dashboard",
-    referring_clinician: "Referring Clinician Dashboard",
-    receiving_clinician: "Receiving Clinician Dashboard",
-    facility_administrator: "Facility Administrator Dashboard",
-  };
+  const role = activeUser.role;
+  const stats = summary.stats ?? {};
+  const refs = summary.referrals ?? {};
+  const demoClock = summary.demoClock;
 
   return (
     <main className="dashboard-page">
       <div className="dashboard-heading">
         <div>
           <span className="dashboard-eyebrow">OVERVIEW</span>
-          <h1>{roleTitles[activeUser.role]}</h1>
-          <p>Welcome, {activeUser.name}. Here's your workspace overview.</p>
+          <h1>{ROLE_TITLES[role] ?? "Dashboard"}</h1>
+          <p>
+            Welcome, {activeUser.name}. {ROLE_HINTS[role] ?? ""}
+          </p>
         </div>
-
         <div className="dashboard-date">
           <Clock size={15} />
-          <span>Demo workspace overview</span>
+          <span>
+            Updated {formatDateTime(summary.generatedAt)}
+            {demoClock?.active ? ` · Demo clock +${demoClock.offsetMinutes} min` : ""}
+          </span>
         </div>
       </div>
 
-      {"stats" in dashboard && (
-        <CoordinatorDashboard
-          dashboard={dashboard}
-          onSelectCase={(caseId) =>
-            navigate(`/worklist?caseId=${encodeURIComponent(caseId)}`, {
-              state: {
-                returnTo: `${location.pathname}${location.search}`,
-              },
-            })
-          }
-        />
-      )}
-
-      {"assignedCases" in dashboard && (
-        <ReferringClinicianDashboardView dashboard={dashboard} />
-      )}
-
-      {"staff" in dashboard && (
-        <FacilityAdministratorDashboardView dashboard={dashboard} />
-      )}
-
-      {"pendingReferrals" in dashboard && (
-        <ReceivingClinicianDashboardView
-          dashboard={dashboard}
-          onSelectReferral={handleSelectReferral}
-        />
-      )}
-
-      {selectedReferral && (
-        <ReferralDetails
-          referral={selectedReferral}
-          onClose={() => setSelectedReferral(null)}
-          onReferralUpdated={() => {
-            setSelectedReferral(null);
-            loadDashboard();
-          }}
-        />
+      {role === "coordinator" || role === "national_admin" ? (
+        <CoordinatorView summary={summary} stats={stats} refs={refs} navigate={navigate} />
+      ) : role === "referring_clinician" ? (
+        <ReferringView summary={summary} stats={stats} refs={refs} navigate={navigate} />
+      ) : role === "receiving_clinician" ? (
+        <ReceivingView summary={summary} refs={refs} navigate={navigate} />
+      ) : (
+        <FacilityView summary={summary} />
       )}
     </main>
   );
 }
 
-function CoordinatorDashboard({
-  dashboard,
-  onSelectCase,
-}: {
-  dashboard: DashboardSummary;
-  onSelectCase: (caseId: string) => void;
-}) {
-  const { stats } = dashboard;
+type Navigate = ReturnType<typeof useNavigate>;
 
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  hint,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Activity;
+  tone: "navy" | "teal" | "coral" | "amber";
+  hint?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <article
+      className={`stat-card stat-${tone}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (onClick && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      style={onClick ? { cursor: "pointer" } : undefined}
+    >
+      <div className="stat-card-top">
+        <span>{label}</span>
+        <span className="stat-icon">
+          <Icon size={17} />
+        </span>
+      </div>
+      <div className="stat-value">{value}</div>
+      {hint && <p>{hint}</p>}
+    </article>
+  );
+}
+
+function CoordinatorView({
+  summary,
+  stats,
+  refs,
+  navigate,
+}: {
+  summary: DashboardSummary;
+  stats: NonNullable<DashboardSummary["stats"]>;
+  refs: Record<string, number>;
+  navigate: Navigate;
+}) {
+  const totalActive = stats.activeCases ?? 0;
   return (
     <>
       <section className="stats-grid">
         <StatCard
           label="Active cases"
-          value={stats.activeCases}
-          description="Cases currently being tracked"
-          icon={Users}
+          value={totalActive}
+          icon={Activity}
           tone="navy"
+          hint="All open cases you can see"
+          onClick={() => navigate("/worklist")}
         />
         <StatCard
-          label="Urgent cases"
-          value={stats.urgentCases}
-          description="Require immediate attention"
-          icon={AlertCircle}
+          label="Urgent"
+          value={stats.urgentCases ?? 0}
+          icon={AlertTriangle}
           tone="coral"
+          hint="Need a person now"
+          onClick={() => navigate("/worklist")}
         />
         <StatCard
-          label="Overdue cases"
-          value={stats.overdueCases}
-          description="Past their expected next step"
+          label="Overdue"
+          value={stats.overdueCases ?? 0}
           icon={Clock}
           tone="amber"
+          hint="Past their due time"
+          onClick={() => navigate("/worklist")}
         />
         <StatCard
-          label="Unassigned cases"
-          value={stats.unassignedCases}
-          description="Awaiting a case owner"
+          label="Unassigned"
+          value={stats.unassignedCases ?? 0}
+          icon={UserX}
+          tone="teal"
+          hint="No owner yet"
+          onClick={() => navigate("/worklist")}
+        />
+      </section>
+
+      <section className="stats-grid">
+        <StatCard label="Exceptions" value={stats.exceptionCases ?? 0} icon={FileWarning} tone="coral" hint="Referral or routing exception" />
+        <StatCard label="Message failed" value={stats.messageFailedCases ?? 0} icon={MessageSquareWarning} tone="amber" hint="Patient not reached by message" />
+        <StatCard label="Not explained" value={stats.notExplainedCases ?? 0} icon={HelpCircle} tone="amber" hint="Patient did not understand" />
+        <StatCard label="Data missing" value={stats.dataMissingCases ?? 0} icon={FileWarning} tone="navy" hint="Information needed to proceed" />
+      </section>
+
+      <div className="dashboard-main-grid">
+        <section className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Cases needing attention</h2>
+              <p>Urgent, overdue and flagged cases first.</p>
+            </div>
+            <span className="panel-count">{summary.priorityCases?.length ?? 0}</span>
+          </div>
+          {(summary.priorityCases?.length ?? 0) === 0 ? (
+            <div className="empty-state">
+              <p>Nothing urgent right now.</p>
+            </div>
+          ) : (
+            <div className="priority-list">
+              {summary.priorityCases?.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="priority-item"
+                  style={{ textAlign: "left", width: "100%", background: "none", border: 0, font: "inherit", cursor: "pointer" }}
+                  onClick={() => navigate(`/worklist?caseId=${encodeURIComponent(item.id)}`)}
+                >
+                  <span className={`priority-indicator priority-${item.priority.toLowerCase()}`} />
+                  <div className="priority-details">
+                    <div className="priority-title-row">
+                      <h3>{item.patientLabel}</h3>
+                      <PriorityBadge priority={item.priority} />
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <p>
+                      {item.screeningType ?? "No screening"} — {item.screeningResult ?? "No result"}
+                    </p>
+                    <div className="priority-meta">
+                      <span>{item.caseId}</span>
+                      <span>Owner: {item.owner}</span>
+                      <span className={item.overdue ? "wl-time-overdue" : undefined}>
+                        {formatTimeLeft(
+                          item.dueAt
+                            ? (new Date(item.dueAt).getTime() - Date.now()) / 3600000
+                            : null
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="priority-footer">
+                    <ArrowRight size={14} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Where cases are</h2>
+              <p>Cases by workflow status.</p>
+            </div>
+          </div>
+          {(summary.careProgress?.length ?? 0) === 0 ? (
+            <div className="empty-state">
+              <p>No active cases yet.</p>
+            </div>
+          ) : (
+            <div className="progress-list">
+              {[...(summary.careProgress ?? [])]
+                .sort((a, b) => b.count - a.count)
+                .map((item) => (
+                  <div className="progress-item" key={item.label}>
+                    <div className="progress-label">
+                      <span>{item.label}</span>
+                      <strong>{item.count}</strong>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${item.percentage}%` }} />
+                    </div>
+                    <span className="progress-percentage">{item.percentage}%</span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="dashboard-bottom-grid">
+        <ReferralPanel refs={refs} navigate={navigate} />
+        <ActivityPanel items={summary.recentActivity ?? []} />
+      </div>
+    </>
+  );
+}
+
+function ReferringView({
+  summary,
+  stats,
+  refs,
+  navigate,
+}: {
+  summary: DashboardSummary;
+  stats: NonNullable<DashboardSummary["stats"]>;
+  refs: Record<string, number>;
+  navigate: Navigate;
+}) {
+  const approvals = summary.closureApprovals ?? [];
+  return (
+    <>
+      <section className="stats-grid">
+        <StatCard
+          label="My active cases"
+          value={stats.assignedCases ?? 0}
+          icon={Users}
+          tone="navy"
+          hint="Cases where you are the owner"
+          onClick={() => navigate("/worklist")}
+        />
+        <StatCard label="Urgent" value={stats.urgentCases ?? 0} icon={AlertTriangle} tone="coral" hint="Urgent and still open" onClick={() => navigate("/worklist")} />
+        <StatCard label="Overdue" value={stats.overdueCases ?? 0} icon={Clock} tone="amber" hint="Past their due time" onClick={() => navigate("/worklist")} />
+        <StatCard
+          label="Closures to sign off"
+          value={stats.closuresAwaitingSignOff ?? 0}
+          icon={ShieldCheck}
+          tone="teal"
+          hint="You are the named second approver"
+        />
+      </section>
+
+      <div className="dashboard-main-grid">
+        <section className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Closures waiting for your sign-off</h2>
+              <p>An 'other' closure needs a second person before it takes effect.</p>
+            </div>
+            <span className="panel-count">{approvals.length}</span>
+          </div>
+          {approvals.length === 0 ? (
+            <div className="empty-state">
+              <p>No closures are waiting for you.</p>
+            </div>
+          ) : (
+            <div className="priority-list">
+              {approvals.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="priority-item"
+                  style={{ textAlign: "left", width: "100%", background: "none", border: 0, font: "inherit", cursor: "pointer" }}
+                  onClick={() => navigate(`/worklist?caseId=${encodeURIComponent(item.id)}`)}
+                >
+                  <span className="priority-indicator priority-high" />
+                  <div className="priority-details">
+                    <div className="priority-title-row">
+                      <h3>{item.patientLabel}</h3>
+                      <span className="ui-badge ui-badge-warning">{humanize(item.closureType)}</span>
+                    </div>
+                    <p>{item.reason}</p>
+                    <div className="priority-meta">
+                      <span>{item.caseNumber}</span>
+                      <span>Requested by {item.requestedBy}</span>
+                      <span>{formatDateTime(item.requestedAt)}</span>
+                    </div>
+                  </div>
+                  <span className="priority-footer">
+                    <ArrowRight size={14} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <ReferralPanel refs={refs} navigate={navigate} />
+      </div>
+    </>
+  );
+}
+
+function ReceivingView({
+  summary,
+  refs,
+  navigate,
+}: {
+  summary: DashboardSummary;
+  refs: Record<string, number>;
+  navigate: Navigate;
+}) {
+  const routing = summary.urgentRouting ?? { awaitingAcceptance: 0, accepted: 0 };
+  return (
+    <>
+      <section className="stats-grid">
+        <StatCard
+          label="Urgent routed to me"
+          value={routing.awaitingAcceptance}
+          icon={AlertTriangle}
+          tone="coral"
+          hint="Accept before the time limit"
+          onClick={() => navigate("/urgent-inbox")}
+        />
+        <StatCard
+          label="Urgent accepted"
+          value={routing.accepted}
           icon={Activity}
           tone="teal"
+          hint="You own these cases"
+          onClick={() => navigate("/worklist")}
         />
-      </section>
-
-      <section className="dashboard-main-grid">
-        <PriorityQueue
-          cases={dashboard.priorityCases}
-          onSelectCase={onSelectCase}
-        />
-        <CareProgress stages={dashboard.careProgress} />
-      </section>
-
-      <section className="dashboard-bottom-grid">
-        <ReferralOverview referrals={dashboard.referrals} />
-        <RecentActivity activities={dashboard.recentActivity} />
-      </section>
-    </>
-  );
-}
-
-function ReferringClinicianDashboardView({
-  dashboard,
-}: {
-  dashboard: ReferringClinicianDashboard;
-}) {
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <section className="stats-grid">
         <StatCard
-          label="Assigned cases"
-          value={dashboard.assignedCases}
-          description="Cases assigned to you"
+          label="Referrals assigned to me"
+          value={refs.assignedToMe ?? 0}
           icon={Users}
           tone="navy"
+          hint="Sent or accepted"
+          onClick={() => navigate("/referrals")}
         />
         <StatCard
-          label="Awaiting review"
-          value={dashboard.casesAwaitingReview}
-          description="Not yet available from the API"
-          icon={AlertCircle}
-          tone="coral"
-        />
-        <StatCard
-          label="Pending referrals"
-          value={dashboard.referralsPending}
-          description="Awaiting referral response"
-          icon={Clock}
-          tone="teal"
-        />
-      </section>
-
-      <section className="dashboard-section">
-        <h2>Cases requiring attention</h2>
-
-        {dashboard.recentCases.length === 0 ? (
-          <p>No cases currently require attention.</p>
-        ) : (
-          dashboard.recentCases.map((item) => (
-            <div className="dashboard-list-item" key={item.id}>
-              <div>
-                <strong>
-                  {item.id} · {item.patientLabel}
-                </strong>
-                <p>
-                  {item.screeningType} — {item.screeningResult}
-                </p>
-                <p>{item.nextAction}</p>
-              </div>
-
-              <div className="dashboard-case-actions">
-                <span
-                  className={`dashboard-due-label ${
-                    item.dueLabel.toLowerCase().includes("overdue")
-                      ? "overdue"
-                      : "normal"
-                  }`}
-                >
-                  {item.dueLabel}
-                </span>
-
-                <button
-                  type="button"
-                  className="dashboard-action-button"
-                  onClick={() =>
-                    navigate(`/worklist?caseId=${item.id}`, {
-                      state: { returnTo: "/" },
-                    })
-                  }
-                >
-                  Open case
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </section>
-    </>
-  );
-}
-
-function ReceivingClinicianDashboardView({
-  dashboard,
-  onSelectReferral,
-}: {
-  dashboard: ReceivingClinicianDashboard;
-  onSelectReferral: (referralId: string) => void;
-}) {
-  return (
-    <>
-      <section className="stats-grid">
-        <StatCard
-          label="Pending referrals"
-          value={dashboard.pendingReferrals}
-          description="Awaiting your decision"
+          label="Outstanding decisions"
+          value={refs.outstandingDecisions ?? 0}
           icon={Clock}
           tone="amber"
-        />
-        <StatCard
-          label="Accepted referrals"
-          value={dashboard.acceptedReferrals}
-          description="Accepted by you"
-          icon={CheckCircle}
-          tone="teal"
-        />
-        <StatCard
-          label="Urgent referrals"
-          value={dashboard.urgentReferrals}
-          description="Require priority attention"
-          icon={AlertCircle}
-          tone="coral"
+          hint="Referrals waiting for you"
+          onClick={() => navigate("/referrals")}
         />
       </section>
 
-      <section className="dashboard-section">
-        <h2>Incoming referrals</h2>
-
-        {dashboard.referrals.length === 0 ? (
-          <p>No incoming referrals at the moment.</p>
-        ) : (
-          dashboard.referrals.map((referral) => (
-            <div
-              className="dashboard-list-item incoming-referral-item"
-              key={referral.id}
-              onClick={() => onSelectReferral(referral.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelectReferral(referral.id);
-                }
-              }}
-            >
-              <div>
-                <strong>
-                  {referral.id} · {referral.patientLabel}
-                </strong>
-                <p>{referral.screeningType}</p>
-                <p>From: {referral.referringFacility}</p>
-                <p>{referral.referralReason}</p>
-              </div>
-              <span>{referral.status.replace("_", " ")}</span>
-            </div>
-          ))
-        )}
-      </section>
-    </>
-  );
-}
-
-function FacilityAdministratorDashboardView({
-  dashboard,
-}: {
-  dashboard: FacilityAdministratorDashboard;
-}) {
-  return (
-    <>
-      <section className="stats-grid">
-        <StatCard
-          label="Total staff"
-          value={dashboard.staff.totalStaff}
-          description="Registered staff profiles"
-          icon={Users}
-          tone="navy"
-        />
-        <StatCard
-          label="Active staff"
-          value={dashboard.staff.activeStaff}
-          description="Currently active accounts"
-          icon={UserCheck}
-          tone="teal"
-        />
-        <StatCard
-          label="Inactive staff"
-          value={dashboard.staff.inactiveStaff}
-          description="Inactive accounts"
-          icon={Users}
-          tone="amber"
-        />
-        <StatCard
-          label="Pending access"
-          value={dashboard.staff.pendingAccess}
-          description="Not currently tracked"
-          icon={AlertCircle}
-          tone="coral"
-        />
-      </section>
-
-      <section className="dashboard-section">
-        <h2>Facility connections</h2>
-
-        {dashboard.facilityConnections.map((facility) => (
-          <div className="dashboard-list-item" key={facility.id}>
+      <div className="dashboard-main-grid">
+        <ReferralPanel refs={refs} navigate={navigate} />
+        <section className="dashboard-panel">
+          <div className="panel-heading">
             <div>
-              <strong>
-                <Building2 size={16} /> {facility.facilityName}
-              </strong>
-              <p>Last checked: {facility.lastChecked}</p>
+              <h2>Urgent routing</h2>
+              <p>Two stages, then the coordinator handles the exception.</p>
             </div>
-            <span>{facility.connectionStatus}</span>
           </div>
-        ))}
-      </section>
+          <div className="progress-list">
+            <div className="progress-item">
+              <div className="progress-label">
+                <span>Awaiting acceptance</span>
+                <strong>{routing.awaitingAcceptance}</strong>
+              </div>
+            </div>
+            <div className="progress-item">
+              <div className="progress-label">
+                <span>Accepted</span>
+                <strong>{routing.accepted}</strong>
+              </div>
+            </div>
+          </div>
+          <div className="priority-footer" style={{ padding: 16 }}>
+            <a href="/urgent-inbox">Open the urgent inbox</a>
+          </div>
+        </section>
+      </div>
     </>
   );
 }
 
-export default DashboardPage;
+function FacilityView({
+  summary,
+}: {
+  summary: DashboardSummary;
+}) {
+  const staff = summary.staffAccess;
+  const connection = summary.connection;
+  return (
+    <>
+      <section className="stats-grid">
+        <StatCard label="Total staff" value={staff?.totalStaff ?? 0} icon={Users} tone="navy" hint="At this facility" />
+        <StatCard label="Active staff" value={staff?.activeStaff ?? 0} icon={ShieldCheck} tone="teal" hint="Can sign in" />
+        <StatCard label="Inactive" value={staff?.inactiveStaff ?? 0} icon={UserX} tone="amber" hint="Access disabled" />
+        <StatCard
+          label="Connection"
+          value={connection?.status === "CONNECTED" ? 1 : 0}
+          icon={Plug}
+          tone={connection?.status === "CONNECTED" ? "teal" : "coral"}
+          hint={connection?.status ?? "Unknown"}
+        />
+      </section>
+
+      <div className="dashboard-main-grid">
+        <section className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Staff by role</h2>
+              <p>No patient or clinical case data is shown at this level (R-09).</p>
+            </div>
+          </div>
+          {staff && Object.keys(staff.byRole).length > 0 ? (
+            <div className="progress-list">
+              {Object.entries(staff.byRole).map(([role, count]) => (
+                <div className="progress-item" key={role}>
+                  <div className="progress-label">
+                    <span>{humanize(role)}</span>
+                    <strong>{count}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p>No staff records at this facility.</p>
+            </div>
+          )}
+          <div className="priority-footer" style={{ padding: 16 }}>
+            <a href="/settings">Open settings</a>
+          </div>
+        </section>
+
+        <section className="dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Facility</h2>
+              <p>Connection and staff management.</p>
+            </div>
+          </div>
+          <div className="priority-list">
+            <div className="priority-item">
+              <span className="priority-indicator priority-normal" />
+              <div className="priority-details">
+                <div className="priority-title-row">
+                  <h3>
+                    <Building2 size={14} /> {summary.facility?.name ?? "Facility"}
+                  </h3>
+                </div>
+                <div className="priority-meta">
+                  <span>Code: {summary.facility?.code ?? "—"}</span>
+                  <span>Connector: {connection?.connectorType ?? "—"}</span>
+                  <span>Last event: {formatDateTime(connection?.lastEventAt)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="priority-footer" style={{ padding: 16 }}>
+            <a href="/facilities">Manage facilities and staff</a>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function ReferralPanel({
+  refs,
+  navigate,
+}: {
+  refs: Record<string, number>;
+  navigate: Navigate;
+}) {
+  const pending = refs.pending ?? refs.sent ?? 0;
+  const accepted = refs.accepted ?? 0;
+  const declined = refs.declined ?? refs.rejected ?? 0;
+  const total = refs.total ?? pending + accepted + declined;
+  const share = (value: number) => (total ? Math.round((value / total) * 100) : 0);
+  return (
+    <section className="dashboard-panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Referrals</h2>
+          <p>Where referrals stand right now.</p>
+        </div>
+        <span className="panel-count">{total}</span>
+      </div>
+      <div className="referral-total">
+        <h3>{total}</h3>
+        <span>referrals in view</span>
+      </div>
+      <div className="referral-progress">
+        <span className="referral-segment referral-accepted" style={{ width: `${share(accepted)}%` }} />
+        <span className="referral-segment referral-pending" style={{ width: `${share(pending)}%` }} />
+        <span className="referral-segment referral-rejected" style={{ width: `${share(declined)}%` }} />
+      </div>
+      <div className="referral-legend">
+        <div className="referral-legend-item">
+          <span className="referral-label">Accepted</span>
+          <strong>{accepted}</strong>
+        </div>
+        <div className="referral-legend-item">
+          <span className="referral-label">Awaiting</span>
+          <strong>{pending}</strong>
+        </div>
+        <div className="referral-legend-item">
+          <span className="referral-label">Declined</span>
+          <strong>{declined}</strong>
+        </div>
+      </div>
+      <div className="referral-footer">
+        <span>Reassign or escalate from the referrals page.</span>
+        <button
+          type="button"
+          className="ui-btn ui-btn-secondary ui-btn-sm"
+          onClick={() => navigate("/referrals")}
+        >
+          Open referrals
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ActivityPanel({
+  items,
+}: {
+  items: NonNullable<DashboardSummary["recentActivity"]>;
+}) {
+  return (
+    <section className="dashboard-panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Recent activity</h2>
+          <p>The append-only audit trail.</p>
+        </div>
+      </div>
+      {items.length === 0 ? (
+        <div className="empty-state">
+          <p>No activity recorded yet.</p>
+        </div>
+      ) : (
+        <div className="activity-list">
+          {items.map((item) => (
+            <div className="activity-item" key={item.id}>
+              <span className="activity-marker">{initialsOf(item.actor)}</span>
+              <div className="activity-content">
+                <p>{item.description}</p>
+                <div className="activity-meta">
+                  <span>{item.actor}</span>
+                  {item.actorRole && <span>{humanize(item.actorRole)}</span>}
+                  <span>{formatDateTime(item.timestamp)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}

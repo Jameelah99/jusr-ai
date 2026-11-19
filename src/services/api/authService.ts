@@ -11,6 +11,8 @@ export interface AuthUser {
   displayName: string;
   role: string;
   facilityId: string | null;
+  specialty?: string | null;
+  authorisedToClose: boolean;
 }
 
 interface LoginResponse {

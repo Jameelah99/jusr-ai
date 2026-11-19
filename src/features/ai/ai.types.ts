@@ -1,4 +1,6 @@
 
+import type { AISuggestionRecord } from "../../services/api/v6.types";
+
 export type AIHelperType =
   | "document_read"
   | "message_draft"
@@ -13,15 +15,9 @@ export type BackendAIKind =
   | "CASE_SUMMARY"
   | "REFERRAL_TARGET";
 
-export type SuggestionStatus =
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED";
+export type SuggestionStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type SuggestionDecision =
-  | "accept"
-  | "edit"
-  | "reject";
+export type SuggestionDecision = "accept" | "edit" | "reject";
 
 export type SuggestionSourceType =
   | "CASE"
@@ -55,10 +51,7 @@ export interface IntakePayload {
 
 export interface UrgencyPayload {
   priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
-  actionability:
-    | "ACTIONABLE"
-    | "NEEDS_REVIEW"
-    | "NOT_ACTIONABLE";
+  actionability: "ACTIONABLE" | "NEEDS_REVIEW" | "NOT_ACTIONABLE";
   rationale: string;
 }
 
@@ -66,6 +59,8 @@ export interface MessageDraftPayload {
   channel: "SMS" | "EMAIL";
   body: string;
   purpose?: string;
+  language?: "en" | "ar";
+  templateVersion?: string;
 }
 
 export interface CaseSummaryPayload {
@@ -95,27 +90,7 @@ export interface AISuggestionCreateRequest extends AIBaseRequest {
     | ReferralTargetPayload;
 }
 
-export interface AISuggestion {
-  id: string;
-  kind: BackendAIKind;
-  status: SuggestionStatus;
-  caseId: string | null;
-  facilityId: string;
-  payload:
-    | IntakePayload
-    | UrgencyPayload
-    | MessageDraftPayload
-    | CaseSummaryPayload
-    | ReferralTargetPayload;
-  model: string | null;
-  confidence: number | null;
-  createdAt: string;
-  decidedById: string | null;
-  decidedAt: string | null;
-  decisionNote: string | null;
-  applied: Record<string, unknown> | null;
-  requiresStaffApproval: boolean;
-}
+export type AISuggestion = AISuggestionRecord;
 
 export interface AIApproveRequest {
   editedBody?: string;
@@ -124,22 +99,6 @@ export interface AIApproveRequest {
 
 export interface AIRejectRequest {
   reason: string;
-}
-
-export interface AIListResponse {
-  success: boolean;
-  data: AISuggestion[];
-  meta: {
-    total: number;
-    page: number;
-    pageSize: number;
-  };
-}
-
-export interface AISingleResponse {
-  success: boolean;
-  data: AISuggestion;
-  meta: Record<string, unknown>;
 }
 
 export interface AIDocumentReadRequest {
@@ -187,18 +146,6 @@ export interface AIMessageDraftRequest {
   contact: string;
 }
 
-export interface AIMessageDraftResult {
-  id: string;
-  kind: "MESSAGE_DRAFT";
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  caseId: string | null;
-  facilityId: string;
-  payload: {
-    channel: "SMS" | "EMAIL";
-    body: string;
-    purpose?: string;
-    language: "en" | "ar";
-    templateVersion: string;
-  };
-  requiresStaffApproval: boolean;
-}
+export type AIMessageDraftResult = AISuggestionRecord & {
+  payload: MessageDraftPayload;
+};

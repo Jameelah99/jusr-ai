@@ -21,6 +21,7 @@ import UserGuidePage from "./features/help-support/UserGuidePage";
 import ContactSupportPage from "./features/help-support/ContactSupportPage";
 import PrivacySecurityPage from "./features/help-support/PrivacySecurityPage";
 import SettingsPage from "./features/settings/SettingsPage";
+import AIReviewPage from "./features/ai/AIReviewPage";
 
 function App() {
   return <UserProvider><Routes>
@@ -36,6 +37,7 @@ function App() {
       <Route element={<ProtectedRoute permission="patients" />}><Route path="patients" element={<PatientsPage />} /><Route path="patients/:patientId" element={<PatientProfilePage />} /></Route>
       <Route element={<ProtectedRoute permission="referrals" />}><Route path="referrals" element={<ReferralsPage />} /></Route>
       <Route element={<ProtectedRoute permission="consultations" />}><Route path="consultations" element={<ConsultationsPage />} /></Route>
+      <Route element={<ProtectedRoute permission="ai_review" />}><Route path="ai-review" element={<AIReviewPage />} /></Route>
       <Route element={<ProtectedRoute permission="measures" />}><Route path="measures" element={<MeasuresPage />} /></Route>
       <Route element={<ProtectedRoute permission="facilities" />}><Route path="facilities" element={<FacilitiesPage />} /></Route>
       <Route element={<ProtectedRoute permission="settings" />}><Route path="settings" element={<SettingsPage />} /></Route>

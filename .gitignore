@@ -44,3 +44,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+# Local duplicate copy and archives (deploy from repo root)
+jusr-ai/
+jusr-ai.zip

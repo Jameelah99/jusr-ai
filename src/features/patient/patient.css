@@ -856,3 +856,31 @@
     font-size: 9px;
   }
 }
+.patient-urgency-note {
+  margin: 8px 0 0;
+  color: #5b6b60;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.patient-contact-card span + span {
+  display: block;
+  margin-top: 2px;
+}
+
+.patient-contact-phone {
+  display: inline-block;
+  margin-top: 6px;
+  color: #142b50;
+  font-size: 13px;
+}
+
+.patient-reassurance-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.patient-reassurance-card > .patient-submit-button {
+  align-self: flex-start;
+}

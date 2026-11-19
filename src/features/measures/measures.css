@@ -334,3 +334,147 @@
     min-height: auto;
   }
 }
+
+.measures-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.measures-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  color: #4f5b53;
+  background: #f7faf7;
+  border: 1px solid #e7ebe7;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.measures-scope strong {
+  color: #17211b;
+}
+
+.measure-values {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.measure-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #edf0ed;
+  font-size: 12px;
+}
+
+.measure-value:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.measure-value span {
+  color: #68736c;
+}
+
+.measure-value strong {
+  color: #17211b;
+  font-size: 13px;
+  text-align: right;
+}
+
+.measure-definition {
+  margin-top: 0;
+}
+
+.baseline-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.baseline-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid #edf0ed;
+  color: #4f5b53;
+}
+
+.baseline-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.baseline-table td:last-child {
+  text-align: right;
+  color: #17211b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.measures-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+}
+
+.measures-detail-title {
+  margin: 4px 0 12px;
+  color: #26332a;
+  font-size: 13px;
+}
+
+.measures-detail-title + .delay-list {
+  margin-top: 0;
+}
+
+.open-age-table {
+  font-size: 12px;
+}
+
+.delay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.delay-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 2px;
+  border-bottom: 1px solid #edf0ed;
+  color: #4f5b53;
+  font-size: 12px;
+}
+
+.delay-list li:last-child {
+  border-bottom: 0;
+}
+
+.delay-list strong {
+  color: #17211b;
+}
+
+.measures-muted {
+  color: #7b857d;
+  font-size: 12px;
+}
+
+@media (max-width: 1000px) {
+  .measures-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

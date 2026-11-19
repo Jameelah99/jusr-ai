@@ -32,15 +32,16 @@ function AssistedPatientResponsePage() {
     try {
       const result = await recordAssistedPatientResponse(caseId, {
         acknowledged: submittedResponse.acknowledged,
-        understood: submittedResponse.understanding === "Yes",
+        understood_level:
+          submittedResponse.understanding === "Yes"
+            ? "YES"
+            : submittedResponse.understanding === "Partly"
+              ? "PARTLY"
+              : "NO",
         confidence: submittedResponse.confidence ?? 1,
-
-        explanationStatus:
-          submittedResponse.understanding === "Yes" &&
-          submittedResponse.resultExplained
-            ? "EXPLAINED"
-            : "NOT_EXPLAINED",
-
+        explanationStatus: submittedResponse.resultExplained
+          ? "EXPLAINED"
+          : "NOT_EXPLAINED",
         callbackRequested: submittedResponse.callbackRequested,
       });
 

@@ -1,65 +1,26 @@
 import { apiRequest } from "../../services/api/apiClient";
+import type {
+  GeneratedPatientLink,
+  PatientLinkRecord,
+  PatientPortalContext,
+  PatientResponseRecord,
+  UnderstandingLevel,
+} from "../../services/api/v6.types";
 
-export interface GeneratedPatientLink {
-  linkId: string;
-  token: string;
-  url: string;
-  expiresAt: string;
-  verificationRequired: boolean;
-  resent: boolean;
-  note: string;
-}
-
-export interface PatientLinkRecord {
-  id: string;
-  status: string;
-  createdAt: string;
-  expiresAt: string;
-  failedAttempts: number;
-  lockedAt: string | null;
-  verifiedAt: string | null;
-  lastAccessedAt: string | null;
-  createdById: string | null;
-}
-
-export interface PatientResponseRecord {
-  id: string;
-  kind: string;
-  value: Record<string, unknown> | null;
-  source: "PATIENT_LINK" | "STAFF_ASSISTED";
-  submissionId: string | null;
-  note: string | null;
-  recordedAt: string;
-  recordedBy: {
-    id: string;
-    displayName: string;
-    role: string;
-  } | null;
-}
+export type {
+  GeneratedPatientLink,
+  PatientLinkRecord,
+  PatientPortalContext,
+  PatientResponseRecord,
+};
 
 export interface AssistedResponsePayload {
   acknowledged: boolean;
-  understood: boolean;
+  understood_level: UnderstandingLevel;
   confidence: number;
   explanationStatus: "EXPLAINED" | "NOT_EXPLAINED";
   callbackRequested: boolean;
   note?: string;
-}
-
-export interface PatientPortalContext {
-  patient: { displayLabel: string };
-  facility: { name: string };
-  screening: { displayLabel: string } | null;
-  nextAction: { label: string } | null;
-  dueAt: string | null;
-  expiresAt: string;
-  responses: {
-    acknowledged: boolean;
-    understood: boolean | null;
-    confidence: number | null;
-    explanationStatus: string | null;
-    callbackRequested: boolean;
-  };
 }
 
 export interface PatientVerificationResult {
@@ -89,22 +50,25 @@ const patientRequest = <T>(
 export async function generatePatientLink(
   caseId: string
 ): Promise<GeneratedPatientLink> {
-  return apiRequest<GeneratedPatientLink>(`/api/cases/${caseId}/links`, {
-    method: "POST",
-  });
+  return apiRequest<GeneratedPatientLink>(
+    `/api/cases/${encodeURIComponent(caseId)}/links`,
+    { method: "POST" }
+  );
 }
 
 export async function getPatientLinks(
   caseId: string
 ): Promise<PatientLinkRecord[]> {
-  return apiRequest<PatientLinkRecord[]>(`/api/cases/${caseId}/links`);
+  return apiRequest<PatientLinkRecord[]>(
+    `/api/cases/${encodeURIComponent(caseId)}/links`
+  );
 }
 
 export async function getPatientResponses(
   caseId: string
 ): Promise<PatientResponseRecord[]> {
   return apiRequest<PatientResponseRecord[]>(
-    `/api/cases/${caseId}/patient-responses`
+    `/api/cases/${encodeURIComponent(caseId)}/patient-responses`
   );
 }
 
@@ -119,7 +83,7 @@ export async function recordAssistedPatientResponse(
     recordedBy: { id: string; displayName: string; role: string };
     recordedAt: string;
     responses: PatientResponseRecord[];
-  }>(`/api/cases/${caseId}/assisted-responses`, {
+  }>(`/api/cases/${encodeURIComponent(caseId)}/assisted-responses`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -155,11 +119,11 @@ export async function acknowledgePatientInformation(
 export async function submitPatientUnderstanding(
   token: string,
   sessionToken: string | null,
-  understood: boolean
+  level: UnderstandingLevel
 ) {
   return patientRequest(token, "/understanding", sessionToken, {
     method: "POST",
-    body: JSON.stringify({ understood }),
+    body: JSON.stringify({ level }),
   });
 }
 
@@ -191,5 +155,16 @@ export async function requestPatientCallback(
   return patientRequest(token, "/callback", sessionToken, {
     method: "POST",
     ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+}
+
+export async function submitPatientReassurance(
+  token: string,
+  sessionToken: string | null,
+  rating: number
+) {
+  return patientRequest(token, "/reassurance", sessionToken, {
+    method: "POST",
+    body: JSON.stringify({ rating }),
   });
 }
