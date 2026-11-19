@@ -135,8 +135,6 @@ export default function CaseDrawer({
   }, [load]);
 
   useEffect(() => {
-<<<<<<< HEAD
-=======
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -145,7 +143,6 @@ export default function CaseDrawer({
   }, []);
 
   useEffect(() => {
->>>>>>> origin/main
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
