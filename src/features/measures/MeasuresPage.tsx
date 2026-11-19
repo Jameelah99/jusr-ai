@@ -379,33 +379,35 @@ export default function MeasuresPage() {
             <div className="measures-detail-grid">
               <div className="comparison-panel">
                 <h3 className="measures-detail-title">Open by status and age</h3>
-                <table className="ui-table open-age-table">
-                  <thead>
-                    <tr>
-                      <th>Status</th>
-                      <th>0–2d</th>
-                      <th>3–7d</th>
-                      <th>8–14d</th>
-                      <th>15d+</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(data.m5.openByStatusAndAge).map(([status, buckets]) => (
-                      <tr key={status}>
-                        <td>{humanize(status)}</td>
-                        <td>{buckets["0-2"] ?? 0}</td>
-                        <td>{buckets["3-7"] ?? 0}</td>
-                        <td>{buckets["8-14"] ?? 0}</td>
-                        <td>{buckets["15+"] ?? 0}</td>
-                      </tr>
-                    ))}
-                    {Object.keys(data.m5.openByStatusAndAge).length === 0 && (
+                <div className="open-age-table-wrap">
+                  <table className="ui-table open-age-table">
+                    <thead>
                       <tr>
-                        <td colSpan={5}>No open cases.</td>
+                        <th>Status</th>
+                        <th>0–2d</th>
+                        <th>3–7d</th>
+                        <th>8–14d</th>
+                        <th>15d+</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {Object.entries(data.m5.openByStatusAndAge).map(([status, buckets]) => (
+                        <tr key={status}>
+                          <td>{humanize(status)}</td>
+                          <td>{buckets["0-2"] ?? 0}</td>
+                          <td>{buckets["3-7"] ?? 0}</td>
+                          <td>{buckets["8-14"] ?? 0}</td>
+                          <td>{buckets["15+"] ?? 0}</td>
+                        </tr>
+                      ))}
+                      {Object.keys(data.m5.openByStatusAndAge).length === 0 && (
+                        <tr>
+                          <td colSpan={5}>No open cases.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="comparison-panel">

@@ -91,11 +91,21 @@
 .cd-body {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 20px 24px 40px;
   display: flex;
   flex-direction: column;
   gap: 18px;
   background: #f8f9fb;
+}
+
+/* Sections must keep their natural height; otherwise overflow: hidden
+   on .cd-section lets the column flexbox shrink them to their header. */
+.cd-body > * {
+  flex: 0 0 auto;
 }
 
 .cd-next-action {
@@ -135,6 +145,7 @@
 
 .cd-section-head h3 {
   font-size: var(--font-size-sm);
+  font-size: 0.9375rem;
   font-weight: var(--font-semibold);
   letter-spacing: 0.01em;
 }
@@ -163,7 +174,7 @@
 }
 
 .cd-field-label {
-  font-size: var(--font-size-xs);
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -171,7 +182,7 @@
 }
 
 .cd-field-value {
-  font-size: var(--font-size-sm);
+  font-size: 0.9375rem;
   font-weight: var(--font-medium);
   overflow-wrap: anywhere;
 }

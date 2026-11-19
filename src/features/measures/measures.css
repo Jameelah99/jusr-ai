@@ -400,7 +400,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .baseline-table td {
@@ -437,7 +437,15 @@
 }
 
 .open-age-table {
-  font-size: 12px;
+  min-width: 480px;
+  font-size: 13px;
+}
+
+.open-age-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .delay-list {
