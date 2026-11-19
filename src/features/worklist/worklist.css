@@ -227,24 +227,26 @@
 .worklist-table-scroll {
   width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .worklist-table {
   width: 100%;
-  min-width: 0;
+  min-width: 1080px;
   table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
 }
 
-.worklist-table th:nth-child(1) { width: 15%; }
-.worklist-table th:nth-child(2) { width: 15%; }
-.worklist-table th:nth-child(3) { width: 9%; }
-.worklist-table th:nth-child(4) { width: 15%; }
-.worklist-table th:nth-child(5) { width: 15%; }
-.worklist-table th:nth-child(6) { width: 15%; }
-.worklist-table th:nth-child(7) { width: 11%; }
-.worklist-table th:nth-child(8) { width: 5%; }
+.worklist-table th:nth-child(1) { width: 16%; }
+.worklist-table th:nth-child(2) { width: 12%; }
+.worklist-table th:nth-child(3) { width: 11%; }
+.worklist-table th:nth-child(4) { width: 8%; }
+.worklist-table th:nth-child(5) { width: 17%; }
+.worklist-table th:nth-child(6) { width: 13%; }
+.worklist-table th:nth-child(7) { width: 13%; }
+.worklist-table th:nth-child(8) { width: 10%; }
 
 .worklist-table thead {
   background: #F8FAFC;
@@ -253,7 +255,7 @@
 .worklist-table th {
   padding: 14px 12px;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -261,13 +263,17 @@
 }
 
 .worklist-table td {
-  padding: 15px 12px;
+  padding: 14px 12px;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   border-top: 1px solid var(--color-border);
   vertical-align: middle;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+.worklist-table tbody tr:nth-child(even) {
+  background: #fbfcfd;
 }
 
 .worklist-clickable-row {
@@ -290,7 +296,7 @@
 .worklist-patient strong,
 .worklist-screening strong {
   color: var(--color-text-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -298,7 +304,7 @@
 .worklist-patient span,
 .worklist-screening span {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .worklist-patient .worklist-short-id {

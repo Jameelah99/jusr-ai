@@ -177,6 +177,14 @@ p {
   outline-offset: 2px;
 }
 
+/* Keep the page behind an open drawer or modal from scrolling. */
+body:has(.cd-overlay),
+body:has(.referral-drawer-overlay),
+body:has(.consultation-drawer-overlay),
+body:has(.ui-modal-overlay) {
+  overflow: hidden;
+}
+
 ::selection {
   background: var(--color-teal-light);
   color: var(--color-primary);

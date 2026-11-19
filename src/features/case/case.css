@@ -7,11 +7,13 @@
   z-index: 900;
   display: flex;
   justify-content: flex-end;
+  overscroll-behavior: contain;
 }
 
 .cd-panel {
   width: min(780px, 96vw);
   height: 100%;
+  min-height: 0;
   background: var(--color-surface);
   box-shadow: -12px 0 32px rgba(16, 24, 40, 0.16);
   display: flex;
@@ -31,6 +33,7 @@
 }
 
 .cd-header {
+  flex-shrink: 0;
   padding: 18px 24px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -90,12 +93,21 @@
 
 .cd-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 20px 24px 40px;
   display: flex;
   flex-direction: column;
   gap: 18px;
   background: #f8f9fb;
+}
+
+/* Sections must keep their natural height; otherwise overflow: hidden
+   on .cd-section lets the column flexbox shrink them to their header. */
+.cd-body > * {
+  flex: 0 0 auto;
 }
 
 .cd-next-action {
@@ -134,7 +146,7 @@
 }
 
 .cd-section-head h3 {
-  font-size: var(--font-size-sm);
+  font-size: 0.9375rem;
   font-weight: var(--font-semibold);
   letter-spacing: 0.01em;
 }
@@ -163,7 +175,7 @@
 }
 
 .cd-field-label {
-  font-size: var(--font-size-xs);
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -171,7 +183,7 @@
 }
 
 .cd-field-value {
-  font-size: var(--font-size-sm);
+  font-size: 0.9375rem;
   font-weight: var(--font-medium);
   overflow-wrap: anywhere;
 }
