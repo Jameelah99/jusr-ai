@@ -64,6 +64,23 @@ export async function getPatientLinks(
   );
 }
 
+export interface PatientPreviewLink {
+  token: string;
+  path: string;
+  url: string;
+  expiresAt: string;
+  note: string;
+}
+
+export async function createPatientPreviewLink(
+  caseId: string
+): Promise<PatientPreviewLink> {
+  return apiRequest<PatientPreviewLink>(
+    `/api/cases/${encodeURIComponent(caseId)}/preview-link`,
+    { method: "POST" }
+  );
+}
+
 export async function getPatientResponses(
   caseId: string
 ): Promise<PatientResponseRecord[]> {

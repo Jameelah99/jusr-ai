@@ -3,6 +3,7 @@ import { Search, Bell, Menu, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { useUser } from "../../context/UserContext";
+import LanguageSwitcher from "../shared/LanguageSwitcher";
 
 interface AppHeaderProps {
   onMenuClick: () => void;
@@ -61,6 +62,7 @@ function AppHeader({ onMenuClick }: AppHeaderProps) {
       </div>
 
       <div className="header-right">
+        <LanguageSwitcher />
         {activeUser && (
           <>
             <div

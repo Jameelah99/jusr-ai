@@ -47,9 +47,14 @@
   place-items: center;
   width: 44px;
   height: 44px;
+  flex-shrink: 0;
   border-radius: 10px;
   color: #179FA2;
   background: #E6F5F4;
+}
+
+.patients-stat-icon svg {
+  display: block;
 }
 
 .patients-stat-icon.active {
@@ -57,18 +62,18 @@
   background: #E8F6EF;
 }
 
-.patients-stat-card span,
-.patients-stat-card strong {
+.patients-stat-card > div > span,
+.patients-stat-card > div > strong {
   display: block;
 }
 
-.patients-stat-card span {
+.patients-stat-card > div > span {
   margin-bottom: 5px;
   color: #718096;
   font-size: 12px;
 }
 
-.patients-stat-card strong {
+.patients-stat-card > div > strong {
   color: #112952;
   font-size: 24px;
 }
@@ -331,6 +336,20 @@
 }
 
 @media (max-width: 700px) {
+  .patients-page-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .patients-heading-actions {
+    width: 100%;
+  }
+
+  .patients-heading-actions .ui-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
   .patients-stats {
     grid-template-columns: 1fr;
   }

@@ -64,6 +64,7 @@ import {
   sendMessage,
 } from "../../services/api/messagesApi";
 import {
+  createPatientPreviewLink,
   generatePatientLink,
   getPatientLinks,
   getPatientResponses,
@@ -619,6 +620,7 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
   } | null>(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   const [acknowledged, setAcknowledged] = useState(true);
   const [level, setLevel] = useState<UnderstandingLevel>("YES");
@@ -626,6 +628,26 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
   const [explanationStatus, setExplanationStatus] = useState<"EXPLAINED" | "NOT_EXPLAINED">("EXPLAINED");
   const [callbackRequested, setCallbackRequested] = useState(false);
   const [note, setNote] = useState("");
+
+  async function openPreview() {
+    // Open the tab before awaiting so the browser treats it as part of the click.
+    const tab = window.open("about:blank", "_blank");
+    setPreviewBusy(true);
+    setError("");
+    try {
+      const preview = await createPatientPreviewLink(caseData.id);
+      if (tab) {
+        tab.location.href = preview.path;
+      } else {
+        window.open(preview.path, "_blank", "noopener");
+      }
+    } catch (err) {
+      tab?.close();
+      setError(messageText(err, "Unable to open the patient view."));
+    } finally {
+      setPreviewBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -702,6 +724,21 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
             </button>
           </div>
         )}
+
+        <div className="cd-actions">
+          <button
+            type="button"
+            className="ui-btn ui-btn-teal"
+            disabled={previewBusy}
+            onClick={() => void openPreview()}
+            title="Open the exact page the patient will see (preview only)"
+          >
+            {previewBusy ? "Opening preview…" : "Preview patient view"}
+          </button>
+          <span className="cd-small">
+            Opens the live patient page in a new tab. Preview only — no SMS is sent.
+          </span>
+        </div>
 
         {generated && (
           <Alert tone="success" title="Link generated — show it once">

@@ -22,6 +22,26 @@ import { formatDateOnly, initialsOf } from "../../utils/format";
 
 const PAGE_SIZE = 25;
 
+type TreatmentStage =
+  | "NOTIFYING"
+  | "AWAITING_ACK"
+  | "AWAITING_CONFIRMATION"
+  | "REFERRAL_PENDING"
+  | "AWAITING_APPOINTMENT"
+  | "AWAITING_TREATMENT"
+  | "READY_TO_CLOSE";
+
+const TREATMENT_STAGES: Array<{ value: TreatmentStage | ""; label: string }> = [
+  { value: "", label: "Default — result received, awaiting triage" },
+  { value: "NOTIFYING", label: "Notification — informing the patient of the result" },
+  { value: "AWAITING_ACK", label: "Awaiting patient acknowledgement" },
+  { value: "AWAITING_CONFIRMATION", label: "Awaiting confirmatory test (e.g. colposcopy, biopsy)" },
+  { value: "REFERRAL_PENDING", label: "Referral sent — awaiting acceptance" },
+  { value: "AWAITING_APPOINTMENT", label: "Awaiting appointment — referral accepted, visit booked" },
+  { value: "AWAITING_TREATMENT", label: "In treatment — under active care or monitoring" },
+  { value: "READY_TO_CLOSE", label: "Discharge review — care complete, ready to close" },
+];
+
 export default function PatientsPage() {
   const navigate = useNavigate();
   const { activeUser } = useUser();
@@ -392,6 +412,7 @@ function SimulationCaseDialog({
     "Review the screening result with the patient"
   );
   const [confirmatory, setConfirmatory] = useState(true);
+  const [stage, setStage] = useState<TreatmentStage | "">("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -409,6 +430,7 @@ function SimulationCaseDialog({
         priority,
         confirmatoryRequired: confirmatory,
         nextActionLabel: nextAction.trim() || undefined,
+        initialStatus: stage || undefined,
       });
       onCreated(created.caseNumber || created.caseId);
     } catch (err) {
@@ -496,6 +518,25 @@ function SimulationCaseDialog({
           <div className="ui-field">
             <label>Next action</label>
             <input value={nextAction} onChange={(event) => setNextAction(event.target.value)} />
+          </div>
+          <div className="ui-field">
+            <label>Treatment stage</label>
+            <select
+              value={stage}
+              onChange={(event) => setStage(event.target.value as TreatmentStage | "")}
+            >
+              {TREATMENT_STAGES.map((option) => (
+                <option key={option.value || "default"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span className="ui-hint">
+              Starts the simulated case at a later care-pathway stage, e.g.
+              “Awaiting appointment” (referral accepted, visit booked) or
+              “Confirmatory testing” (colposcopy, biopsy), so the patient view can
+              be previewed at that stage.
+            </span>
           </div>
           <label className="ui-checkbox">
             <input

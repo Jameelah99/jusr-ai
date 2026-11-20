@@ -89,6 +89,41 @@ export function deleteSpecialtyBackup(specialty: string) {
   );
 }
 
+export interface SpecialtyCatalogEntry {
+  name: string;
+  label: string;
+  scope: string;
+  editable: boolean;
+}
+
+export function listSpecialtyCatalog() {
+  return apiRequest<SpecialtyCatalogEntry[]>("/api/settings/specialties");
+}
+
+export function createSpecialtyEntry(payload: { name: string; label?: string }) {
+  return apiRequest<SpecialtyCatalogEntry>("/api/settings/specialties", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateSpecialtyEntry(
+  name: string,
+  payload: { name: string; label?: string }
+) {
+  return apiRequest<SpecialtyCatalogEntry>(
+    `/api/settings/specialties/${encodeURIComponent(name)}`,
+    { method: "PUT", body: JSON.stringify(payload) }
+  );
+}
+
+export function deleteSpecialtyEntry(name: string) {
+  return apiRequest<{ name: string; removed: boolean }>(
+    `/api/settings/specialties/${encodeURIComponent(name)}`,
+    { method: "DELETE" }
+  );
+}
+
 export function listRoutingRules() {
   return apiRequest<RoutingRule[]>("/api/settings/routing-rules");
 }

@@ -586,7 +586,7 @@ body:has(.ui-modal-overlay) {
 
 /* RESPONSIVE */
 
-@media (max-width: 900px) {
+@media (max-width: 1120px) {
   .facility-context {
     display: none;
   }
@@ -741,8 +741,115 @@ body:has(.ui-modal-overlay) {
 
 
 /* =========================================
-   PAGE FOUNDATION
+   LANGUAGE SWITCHER
 ========================================= */
+
+.language-switch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+}
+
+.language-switch svg {
+  margin: 0 4px;
+  flex: 0 0 auto;
+}
+
+.language-switch button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+.language-switch button:hover {
+  color: var(--color-primary);
+}
+
+.language-switch button.active {
+  background: var(--color-teal);
+  color: var(--color-white);
+}
+
+/* =========================================
+   RTL SUPPORT (ARABIC)
+========================================= */
+
+[dir="rtl"] .app-sidebar {
+  inset: 0 0 0 auto;
+}
+
+[dir="rtl"] .app-main {
+  margin-left: 0;
+  margin-right: var(--sidebar-width);
+}
+
+[dir="rtl"] .app-main.main-expanded {
+  margin-right: 76px;
+}
+
+[dir="rtl"] .nav-item-active {
+  border-left: none;
+  border-right: 3px solid var(--color-teal);
+  padding-left: 12px;
+  padding-right: 9px;
+}
+
+[dir="rtl"] .sidebar-collapsed .nav-item-active {
+  border-right: none;
+  padding-right: 0;
+}
+
+[dir="rtl"] .profile-details,
+[dir="rtl"] .profile-button {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  [dir="rtl"] .app-sidebar {
+    transform: translateX(100%);
+  }
+
+  [dir="rtl"] .app-sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  [dir="rtl"] .app-main,
+  [dir="rtl"] .app-main.main-expanded {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  [dir="rtl"] .sidebar-collapsed .nav-item {
+    padding: 0 12px;
+  }
+
+  [dir="rtl"] .sidebar-collapsed .nav-item-active {
+    padding-right: 9px;
+    border-right: 3px solid var(--color-teal);
+  }
+}
+
+@media (max-width: 480px) {
+  .language-switch button {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .language-switch svg {
+    display: none;
+  }
+}
+
 
 .page-container {
   width: 100%;

@@ -6,12 +6,14 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   Upload,
   Users,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import Alert from "../../components/ui/Alert";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/ui/Pagination";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateViews";
@@ -19,6 +21,8 @@ import { useUser } from "../../context/UserContext";
 import {
   createFacility,
   createStaff,
+  deleteFacility,
+  deleteStaff,
   importStaffCsv,
   listFacilities,
   listStaff,
@@ -63,9 +67,36 @@ const TIME_ZONES = [
   "Africa/Cairo",
   "Africa/Casablanca",
   "Asia/Dubai",
+  "Asia/Kolkata",
   "Europe/London",
   "UTC",
 ];
+
+const TIME_ZONE_LABELS: Record<string, string> = {
+  "Africa/Accra": "Accra (GMT, UTC+0)",
+  "Africa/Abidjan": "Abidjan (GMT, UTC+0)",
+  "Africa/Lagos": "Lagos (WAT, UTC+1)",
+  "Africa/Douala": "Douala (WAT, UTC+1)",
+  "Africa/Nairobi": "Nairobi (EAT, UTC+3)",
+  "Africa/Kampala": "Kampala (EAT, UTC+3)",
+  "Africa/Kigali": "Kigali (CAT, UTC+2)",
+  "Africa/Dar_es_Salaam": "Dar es Salaam (EAT, UTC+3)",
+  "Africa/Addis_Ababa": "Addis Ababa (EAT, UTC+3)",
+  "Africa/Johannesburg": "Johannesburg (SAST, UTC+2)",
+  "Africa/Lusaka": "Lusaka (CAT, UTC+2)",
+  "Africa/Harare": "Harare (CAT, UTC+2)",
+  "Africa/Maputo": "Maputo (CAT, UTC+2)",
+  "Africa/Cairo": "Cairo (EET, UTC+2)",
+  "Africa/Casablanca": "Casablanca (WET, UTC+1)",
+  "Asia/Dubai": "Abu Dhabi / Dubai (GST, UTC+4)",
+  "Asia/Kolkata": "India (IST, UTC+5:30)",
+  "Europe/London": "London (GMT/BST)",
+  "UTC": "UTC",
+};
+
+function timeZoneLabel(zone: string): string {
+  return TIME_ZONE_LABELS[zone] ?? zone;
+}
 
 type Tab = "facilities" | "staff" | "feed";
 
@@ -303,7 +334,7 @@ function FacilityEditorModal({
         <label>Time zone</label>
         <select value={timeZone} onChange={(event) => setTimeZone(event.target.value)}>
           {zoneOptions.map((zone) => (
-            <option key={zone} value={zone}>{zone}</option>
+            <option key={zone} value={zone}>{timeZoneLabel(zone)}</option>
           ))}
         </select>
       </div>
@@ -561,6 +592,11 @@ export default function FacilitiesPage() {
   const [rejected, setRejected] = useState<RejectedResult | null>(null);
   const [rejectedPage, setRejectedPage] = useState(1);
   const [rejectedError, setRejectedError] = useState("");
+  const [rejectedBusy, setRejectedBusy] = useState(false);
+  const [rejectedUpdatedAt, setRejectedUpdatedAt] = useState<Date | null>(null);
+  const [facilityRemoving, setFacilityRemoving] = useState<FacilityRecord | null>(null);
+  const [staffRemoving, setStaffRemoving] = useState<StaffMember | null>(null);
+  const [removingBusy, setRemovingBusy] = useState(false);
   const [feedFacilityFilter, setFeedFacilityFilter] = useState("");
   const [csvText, setCsvText] = useState("");
   const [csvBusy, setCsvBusy] = useState(false);
@@ -591,7 +627,7 @@ export default function FacilitiesPage() {
         }),
       ]);
       setFacilities(facilityRows);
-      setStaff(staffRows);
+      setStaff(staffRows.filter((member) => member.isActive));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load facilities.");
     } finally {
@@ -604,6 +640,7 @@ export default function FacilitiesPage() {
   }, [loadDirectory]);
 
   const loadRejected = useCallback(async () => {
+    setRejectedBusy(true);
     setRejectedError("");
     try {
       const result = await getRejectedEvents({
@@ -612,16 +649,75 @@ export default function FacilitiesPage() {
         pageSize: 20,
       });
       setRejected(result);
+      setRejectedUpdatedAt(new Date());
     } catch (err) {
       setRejectedError(
         err instanceof Error ? err.message : "Unable to load rejected items."
       );
+    } finally {
+      setRejectedBusy(false);
     }
   }, [isNational, feedFacilityFilter, rejectedPage]);
 
   useEffect(() => {
     void loadRejected();
   }, [loadRejected]);
+
+  // The feed must never look frozen: poll while the page is open and refresh
+  // whenever the tab regains focus.
+  useEffect(() => {
+    const interval = window.setInterval(() => void loadRejected(), 20000);
+    const onFocus = () => void loadRejected();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadRejected();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadRejected]);
+
+  async function removeFacility() {
+    if (!facilityRemoving) return;
+    setRemovingBusy(true);
+    setError("");
+    try {
+      await deleteFacility(facilityRemoving.id);
+      setNotice(`Facility ${facilityRemoving.name} removed.`);
+      setFacilityRemoving(null);
+      await loadDirectory();
+      await loadRejected();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to remove this facility."
+      );
+      setFacilityRemoving(null);
+    } finally {
+      setRemovingBusy(false);
+    }
+  }
+
+  async function removeStaffMember() {
+    if (!staffRemoving) return;
+    setRemovingBusy(true);
+    setError("");
+    try {
+      await deleteStaff(staffRemoving.id);
+      setNotice(`${staffRemoving.displayName} removed from the staff directory.`);
+      setStaffRemoving(null);
+      await loadDirectory();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to remove this staff member."
+      );
+      setStaffRemoving(null);
+    } finally {
+      setRemovingBusy(false);
+    }
+  }
 
   const filteredFacilities = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -919,13 +1015,22 @@ export default function FacilitiesPage() {
                     {facility.lastEventAt ? formatDateTime(facility.lastEventAt) : "No events yet"}
                   </span>
                   {canAdmin && (
-                    <button
-                      type="button"
-                      className="ui-btn ui-btn-secondary ui-btn-sm"
-                      onClick={() => setFacilityEditor(facility)}
-                    >
-                      <Pencil size={13} /> Edit
-                    </button>
+                    <div className="facility-row-actions">
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn-secondary ui-btn-sm"
+                        onClick={() => setFacilityEditor(facility)}
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn-ghost ui-btn-sm"
+                        onClick={() => setFacilityRemoving(facility)}
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -1037,13 +1142,28 @@ export default function FacilitiesPage() {
                   {member.isActive ? "Active" : "Inactive"}
                 </span>
                 {canAdmin && (
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-secondary ui-btn-sm"
-                    onClick={() => setStaffEditor(member)}
-                  >
-                    <Pencil size={13} /> Edit
-                  </button>
+                  <div className="facility-row-actions">
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-secondary ui-btn-sm"
+                      onClick={() => setStaffEditor(member)}
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-ghost ui-btn-sm"
+                      onClick={() => setStaffRemoving(member)}
+                      disabled={member.id === activeUser?.id}
+                      title={
+                        member.id === activeUser?.id
+                          ? "You cannot remove your own account"
+                          : undefined
+                      }
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -1066,24 +1186,41 @@ export default function FacilitiesPage() {
                   Events that failed validation are listed here with their error
                   code. Nothing is silently dropped.
                 </p>
+                <p className="facility-feed-status">
+                  {rejectedBusy
+                    ? "Refreshing feed…"
+                    : rejectedUpdatedAt
+                      ? `Auto-updating · last checked ${formatDateTime(rejectedUpdatedAt.toISOString())}`
+                      : "Auto-updates every 20 seconds."}
+                </p>
               </div>
-              {isNational && (
-                <label className="facility-inline-filter">
-                  <span>Facility</span>
-                  <select
-                    value={feedFacilityFilter}
-                    onChange={(event) => {
-                      setFeedFacilityFilter(event.target.value);
-                      setRejectedPage(1);
-                    }}
-                  >
-                    <option value="">All facilities</option>
-                    {facilities.map((facility) => (
-                      <option key={facility.id} value={facility.id}>{facility.name}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              <div className="facility-feed-actions">
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-secondary ui-btn-sm"
+                  onClick={() => void loadRejected()}
+                  disabled={rejectedBusy}
+                >
+                  Refresh now
+                </button>
+                {isNational && (
+                  <label className="facility-inline-filter">
+                    <span>Facility</span>
+                    <select
+                      value={feedFacilityFilter}
+                      onChange={(event) => {
+                        setFeedFacilityFilter(event.target.value);
+                        setRejectedPage(1);
+                      }}
+                    >
+                      <option value="">All facilities</option>
+                      {facilities.map((facility) => (
+                        <option key={facility.id} value={facility.id}>{facility.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
 
             {rejectedError && <Alert tone="danger">{rejectedError}</Alert>}
@@ -1365,6 +1502,36 @@ export default function FacilitiesPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={facilityRemoving !== null}
+        title="Delete this facility?"
+        message={
+          facilityRemoving
+            ? `${facilityRemoving.name} (${facilityRemoving.code}) will be removed from the directory, along with its feed events. Facilities with patients, staff or cases cannot be deleted.`
+            : undefined
+        }
+        confirmLabel="Delete facility"
+        tone="danger"
+        busy={removingBusy}
+        onConfirm={() => void removeFacility()}
+        onCancel={() => setFacilityRemoving(null)}
+      />
+
+      <ConfirmDialog
+        open={staffRemoving !== null}
+        title="Delete this staff member?"
+        message={
+          staffRemoving
+            ? `${staffRemoving.displayName} will be removed from the staff directory and can no longer sign in. Their past cases and audit history are kept.`
+            : undefined
+        }
+        confirmLabel="Delete staff member"
+        tone="danger"
+        busy={removingBusy}
+        onConfirm={() => void removeStaffMember()}
+        onCancel={() => setStaffRemoving(null)}
+      />
     </div>
   );
 }

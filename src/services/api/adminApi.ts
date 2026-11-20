@@ -43,6 +43,13 @@ export function updateFacility(
   );
 }
 
+export function deleteFacility(facilityId: string) {
+  return apiRequest<{ id: string; removed: boolean }>(
+    `/api/admin/facilities/${encodeURIComponent(facilityId)}`,
+    { method: "DELETE" }
+  );
+}
+
 export function listStaff(params: {
   facilityId?: string;
   role?: string;
@@ -86,6 +93,13 @@ export function updateStaff(
   return apiRequest<StaffMember>(
     `/api/admin/staff/${encodeURIComponent(userId)}`,
     { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}
+
+export function deleteStaff(userId: string) {
+  return apiRequest<{ id: string; removed: boolean; deactivated: boolean }>(
+    `/api/admin/staff/${encodeURIComponent(userId)}`,
+    { method: "DELETE" }
   );
 }
 

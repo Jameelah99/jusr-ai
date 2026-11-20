@@ -468,6 +468,15 @@
     flex-basis: calc(100% - 55px);
   }
 
+  .facility-row-actions {
+    flex-basis: 100%;
+    margin-left: 49px;
+  }
+
+  .facility-heading-actions {
+    flex-wrap: wrap;
+  }
+
   .facility-status {
     margin-left: 49px;
   }
@@ -644,4 +653,24 @@
   gap: 6px;
   font-size: 12px;
   color: #9b1c1c;
+}
+
+.facility-feed-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.facility-feed-status {
+  margin-top: 4px !important;
+  font-size: 11px !important;
+  color: #98a2b3 !important;
+}
+
+.facility-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }

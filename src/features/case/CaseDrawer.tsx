@@ -311,7 +311,6 @@ export default function CaseDrawer({
 
               {status === "AWAITING_ACK" && (
                 <>
-                  <PatientAccessPanel {...panelProps} />
                   <ReferralPanel {...panelProps} />
                   <MessagingPanel {...panelProps} />
                 </>
@@ -327,12 +326,7 @@ export default function CaseDrawer({
               {status === "REFERRAL_PENDING" && <ReferralPanel {...panelProps} />}
 
               {(status === "AWAITING_APPOINTMENT" ||
-                status === "AWAITING_TREATMENT") && (
-                <>
-                  <AppointmentPanel {...panelProps} />
-                  <PatientAccessPanel {...panelProps} />
-                </>
-              )}
+                status === "AWAITING_TREATMENT") && <AppointmentPanel {...panelProps} />}
 
               {(status === "READY_TO_CLOSE" ||
                 (status !== "CLOSED" && isClinician)) && (
@@ -340,6 +334,8 @@ export default function CaseDrawer({
               )}
 
               {status === "CLOSED" && <ClosurePanel {...panelProps} />}
+
+              <PatientAccessPanel {...panelProps} />
 
               <InfoGrid caseData={caseData} />
               <AdminPanel {...panelProps} />

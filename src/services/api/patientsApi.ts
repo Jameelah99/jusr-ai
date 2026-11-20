@@ -108,6 +108,15 @@ export function createSimulationCase(payload: {
   confirmatoryRequired?: boolean;
   nextActionLabel?: string;
   requiredSpecialty?: string;
+  initialStatus?:
+    | "AWAITING_CLASSIFICATION"
+    | "NOTIFYING"
+    | "AWAITING_ACK"
+    | "AWAITING_CONFIRMATION"
+    | "REFERRAL_PENDING"
+    | "AWAITING_APPOINTMENT"
+    | "AWAITING_TREATMENT"
+    | "READY_TO_CLOSE";
 }) {
   return apiRequest<{
     patientId: string;

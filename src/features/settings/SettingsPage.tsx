@@ -17,6 +17,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import Modal from "../../components/ui/Modal";
 import { ErrorState, LoadingState } from "../../components/ui/StateViews";
 import { useUser } from "../../context/UserContext";
+import { normalizeSpecialty } from "../case/useStaff";
 import { listFacilities, listStaff, type StaffMember } from "../../services/api/adminApi";
 import {
   advanceDemoClock,
@@ -26,19 +27,24 @@ import {
 } from "../../services/api/demoApi";
 import {
   createRoutingRule,
+  createSpecialtyEntry,
   deleteRoutingRule,
   deleteSetting,
   deleteSpecialtyBackup,
+  deleteSpecialtyEntry,
   getSettings,
   listRoutingRules,
   listSpecialtyBackups,
+  listSpecialtyCatalog,
   putSetting,
   putSpecialtyBackup,
   updateRoutingRule,
+  updateSpecialtyEntry,
   type RoutingRule,
   type RoutingRuleInput,
   type SettingsResponse,
   type SpecialtyBackupRecord,
+  type SpecialtyCatalogEntry,
 } from "../../services/api/settingsApi";
 import type { FacilityRecord } from "../../services/api/v6.types";
 import { formatDateTime, humanize } from "../../utils/format";
@@ -457,6 +463,16 @@ export default function SettingsPage() {
   const [backupSpecialty, setBackupSpecialty] = useState("");
   const [backupClinician, setBackupClinician] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupLoadError, setBackupLoadError] = useState("");
+
+  const [catalog, setCatalog] = useState<SpecialtyCatalogEntry[]>([]);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogEditor, setCatalogEditor] = useState<SpecialtyCatalogEntry | "new" | null>(null);
+  const [catalogName, setCatalogName] = useState("");
+  const [catalogLabel, setCatalogLabel] = useState("");
+  const [catalogRemoving, setCatalogRemoving] = useState<SpecialtyCatalogEntry | null>(null);
 
   const isNational = activeUser?.role === "national_admin";
   const canEdit =
@@ -504,33 +520,83 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!canEdit) return;
-    Promise.all([
-      listSpecialtyBackups(),
-      listStaff({ role: "RECEIVING_CLINICIAN" }),
-    ])
-      .then(([backupRows, staffRows]) => {
-        setBackups(backupRows);
-        setBackupStaff(staffRows.filter((person) => person.isActive));
+    let cancelled = false;
+    setBackupLoading(true);
+    setBackupLoadError("");
+    listSpecialtyCatalog()
+      .then((rows) => {
+        if (!cancelled) setCatalog(rows);
       })
-      .catch(() => {
-        setBackups([]);
-        setBackupStaff([]);
+      .catch((err) => {
+        if (cancelled) return;
+        setCatalog([]);
+        setBackupLoadError(
+          err instanceof Error ? err.message : "Unable to load the specialty list."
+        );
       });
+    listSpecialtyBackups()
+      .then((rows) => {
+        if (!cancelled) setBackups(rows);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBackups([]);
+        setBackupLoadError(
+          err instanceof Error ? err.message : "Unable to load named backups."
+        );
+      });
+    listStaff({ role: "RECEIVING_CLINICIAN" })
+      .then((rows) => {
+        if (!cancelled) setBackupStaff(rows.filter((person) => person.isActive));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBackupStaff([]);
+        setBackupLoadError(
+          err instanceof Error ? err.message : "Unable to load receiving clinicians."
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setBackupLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [canEdit]);
 
   const backupSpecialties = useMemo(() => {
     const names = new Set<string>();
+    catalog.forEach((entry) => names.add(entry.name));
     backupStaff.forEach((person) => {
-      if (person.specialty) names.add(person.specialty);
+      const name = normalizeSpecialty(person.specialty);
+      if (name) names.add(name);
     });
     backups.forEach((row) => names.add(row.specialty));
     return Array.from(names).sort();
-  }, [backupStaff, backups]);
+  }, [catalog, backupStaff, backups]);
+
+  const specialtyLabels = useMemo(() => {
+    const map = new Map<string, string>();
+    catalog.forEach((entry) => map.set(entry.name, entry.label));
+    return map;
+  }, [catalog]);
+
+  const labelForSpecialty = (name: string) =>
+    specialtyLabels.get(name) ?? humanize(name);
 
   const backupCandidates = useMemo(() => {
-    if (!backupSpecialty) return [];
-    return backupStaff.filter((person) => person.specialty === backupSpecialty);
+    const selected = normalizeSpecialty(backupSpecialty);
+    if (!selected) return [];
+    return backupStaff.filter(
+      (person) => normalizeSpecialty(person.specialty) === selected
+    );
   }, [backupStaff, backupSpecialty]);
+
+  const facilityNames = useMemo(() => {
+    const map = new Map<string, string>();
+    facilities.forEach((facility) => map.set(facility.id, facility.name));
+    return map;
+  }, [facilities]);
 
   async function saveBackup() {
     if (!backupSpecialty || !backupClinician) {
@@ -540,7 +606,7 @@ export default function SettingsPage() {
     setBackupBusy(true);
     setError("");
     try {
-      await putSpecialtyBackup(backupSpecialty, backupClinician);
+      await putSpecialtyBackup(normalizeSpecialty(backupSpecialty), backupClinician);
       setNotice(`Named backup saved for ${humanize(backupSpecialty)}.`);
       setBackups(await listSpecialtyBackups());
       setBackupClinician("");
@@ -562,6 +628,62 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Unable to remove this backup.");
     } finally {
       setBackupBusy(false);
+    }
+  }
+
+  function openCatalogEditor(entry: SpecialtyCatalogEntry | "new") {
+    setCatalogError("");
+    setCatalogEditor(entry);
+    setCatalogName(entry === "new" ? "" : entry.name);
+    setCatalogLabel(entry === "new" ? "" : entry.label);
+  }
+
+  async function saveCatalogEntry() {
+    if (!catalogEditor) return;
+    if (!catalogName.trim()) {
+      setCatalogError("Give the specialty a name.");
+      return;
+    }
+    setCatalogBusy(true);
+    setCatalogError("");
+    try {
+      const payload = {
+        name: catalogName.trim(),
+        label: catalogLabel.trim() || undefined,
+      };
+      if (catalogEditor === "new") {
+        await createSpecialtyEntry(payload);
+        setNotice(`Specialty ${catalogName.trim()} added.`);
+      } else {
+        await updateSpecialtyEntry(catalogEditor.name, payload);
+        setNotice("Specialty updated.");
+      }
+      setCatalogEditor(null);
+      setCatalog(await listSpecialtyCatalog());
+    } catch (err) {
+      setCatalogError(
+        err instanceof Error ? err.message : "Unable to save this specialty."
+      );
+    } finally {
+      setCatalogBusy(false);
+    }
+  }
+
+  async function removeCatalogEntry() {
+    if (!catalogRemoving) return;
+    setCatalogBusy(true);
+    setCatalogError("");
+    try {
+      await deleteSpecialtyEntry(catalogRemoving.name);
+      setNotice(`Specialty ${catalogRemoving.label} removed.`);
+      setCatalogRemoving(null);
+      setCatalog(await listSpecialtyCatalog());
+    } catch (err) {
+      setCatalogError(
+        err instanceof Error ? err.message : "Unable to remove this specialty."
+      );
+    } finally {
+      setCatalogBusy(false);
     }
   }
 
@@ -905,6 +1027,78 @@ export default function SettingsPage() {
           {canEdit && (
             <section className="settings-section">
               <div className="settings-section-heading">
+                <ListTree size={19} />
+                <div>
+                  <h2>Named specialties</h2>
+                  <p>
+                    The specialty list used for routing and named backups. Add,
+                    rename or remove a specialty here.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-secondary ui-btn-sm settings-section-action"
+                  onClick={() => openCatalogEditor("new")}
+                >
+                  <Plus size={14} /> Add specialty
+                </button>
+              </div>
+
+              {catalogError && !catalogEditor && !catalogRemoving && (
+                <Alert tone="danger">{catalogError}</Alert>
+              )}
+
+              <div className="settings-rows">
+                {catalog.map((entry) => (
+                  <div className="settings-row" key={entry.name}>
+                    <div className="settings-row-main">
+                      <strong>{entry.label}</strong>
+                      <span className="settings-row-key">{entry.name}</span>
+                    </div>
+                    <span className="settings-row-value">
+                      <span className="ui-badge ui-badge-neutral">
+                        {entry.scope === "global" ? "Global" : "This facility"}
+                      </span>
+                    </span>
+                    {entry.editable ? (
+                      <div className="settings-row-actions">
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn-secondary ui-btn-sm"
+                          onClick={() => openCatalogEditor(entry)}
+                          disabled={catalogBusy}
+                        >
+                          <Pencil size={13} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn-ghost ui-btn-sm"
+                          onClick={() => setCatalogRemoving(entry)}
+                          disabled={catalogBusy}
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="settings-row-actions">
+                        <span className="settings-row-key">Managed nationally</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {catalog.length === 0 && (
+                  <div className="settings-empty-state">
+                    No named specialties yet. Add one to make it available in the
+                    backup dropdown below.
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {canEdit && (
+            <section className="settings-section">
+              <div className="settings-section-heading">
                 <Users size={19} />
                 <div>
                   <h2>Named specialty backups</h2>
@@ -920,7 +1114,7 @@ export default function SettingsPage() {
                 {backups.map((row) => (
                   <div className="settings-row" key={row.specialty}>
                     <div className="settings-row-main">
-                      <strong>{humanize(row.specialty)}</strong>
+                      <strong>{labelForSpecialty(row.specialty)}</strong>
                       <span className="settings-row-key">{row.clinicianName ?? row.clinicianId}</span>
                     </div>
                     <div className="settings-row-actions">
@@ -949,10 +1143,15 @@ export default function SettingsPage() {
                       setBackupSpecialty(event.target.value);
                       setBackupClinician("");
                     }}
+                    disabled={backupSpecialties.length === 0}
                   >
-                    <option value="">Choose a specialty</option>
+                    <option value="">
+                      {backupSpecialties.length === 0
+                        ? "No specialties available yet"
+                        : "Choose a specialty"}
+                    </option>
                     {backupSpecialties.map((name) => (
-                      <option key={name} value={name}>{humanize(name)}</option>
+                      <option key={name} value={name}>{labelForSpecialty(name)}</option>
                     ))}
                   </select>
                 </div>
@@ -961,12 +1160,24 @@ export default function SettingsPage() {
                   <select
                     value={backupClinician}
                     onChange={(event) => setBackupClinician(event.target.value)}
-                    disabled={!backupSpecialty}
+                    disabled={!backupSpecialty || backupCandidates.length === 0}
                   >
-                    <option value="">Choose a clinician</option>
-                    {backupCandidates.map((person) => (
-                      <option key={person.id} value={person.id}>{person.displayName}</option>
-                    ))}
+                    <option value="">
+                      {backupCandidates.length === 0
+                        ? "No clinician matches this specialty"
+                        : "Choose a clinician"}
+                    </option>
+                    {backupCandidates.map((person) => {
+                      const facilityName = person.facilityId
+                        ? facilityNames.get(person.facilityId)
+                        : undefined;
+                      return (
+                        <option key={person.id} value={person.id}>
+                          {person.displayName}
+                          {facilityName ? ` — ${facilityName}` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="ui-field">
@@ -981,6 +1192,26 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
+
+              {backupLoading && (
+                <p className="settings-hint">Loading specialties and clinicians…</p>
+              )}
+              {backupLoadError && (
+                <p className="settings-hint settings-hint-error">{backupLoadError}</p>
+              )}
+              {!backupLoading && backupStaff.length === 0 && !backupLoadError && (
+                <p className="settings-hint">
+                  No active receiving clinicians are registered at the facilities
+                  you manage. Add a receiving clinician under Facilities → Staff,
+                  then name them here.
+                </p>
+              )}
+              {backupSpecialty && backupCandidates.length === 0 && backupStaff.length > 0 && (
+                <p className="settings-hint">
+                  No active receiving clinician has this specialty. Choose another
+                  specialty or update a clinician's specialty under Facilities → Staff.
+                </p>
+              )}
             </section>
           )}
 
@@ -1096,6 +1327,70 @@ export default function SettingsPage() {
         busy={ruleRemovingBusy}
         onConfirm={() => void removeRule()}
         onCancel={() => setRuleRemoving(null)}
+      />
+
+      {catalogEditor && (
+        <Modal
+          open
+          title={catalogEditor === "new" ? "Add specialty" : "Edit specialty"}
+          subtitle="The name is stored in upper case with underscores; the label is what staff see."
+          onClose={() => setCatalogEditor(null)}
+          footer={
+            <>
+              <button
+                type="button"
+                className="ui-btn ui-btn-secondary"
+                onClick={() => setCatalogEditor(null)}
+                disabled={catalogBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ui-btn ui-btn-primary"
+                onClick={() => void saveCatalogEntry()}
+                disabled={catalogBusy}
+              >
+                {catalogBusy ? "Saving…" : "Save specialty"}
+              </button>
+            </>
+          }
+        >
+          {catalogError && <Alert tone="danger">{catalogError}</Alert>}
+          <div className="routing-form-grid">
+            <div className="ui-field">
+              <label>Specialty name *</label>
+              <input
+                value={catalogName}
+                placeholder="e.g. Colposcopy"
+                onChange={(event) => setCatalogName(event.target.value)}
+              />
+            </div>
+            <div className="ui-field">
+              <label>Display label</label>
+              <input
+                value={catalogLabel}
+                placeholder="e.g. Colposcopy"
+                onChange={(event) => setCatalogLabel(event.target.value)}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <ConfirmDialog
+        open={catalogRemoving !== null}
+        title="Delete this specialty?"
+        message={
+          catalogRemoving
+            ? `${catalogRemoving.label} will be removed from the specialty list. Existing staff and backups keep their specialty value.`
+            : undefined
+        }
+        confirmLabel="Delete specialty"
+        tone="danger"
+        busy={catalogBusy}
+        onConfirm={() => void removeCatalogEntry()}
+        onCancel={() => setCatalogRemoving(null)}
       />
     </main>
   );
