@@ -123,7 +123,7 @@ export async function submitPatientUnderstanding(
 ) {
   return patientRequest(token, "/understanding", sessionToken, {
     method: "POST",
-    body: JSON.stringify({ level }),
+    body: JSON.stringify({ understood: level }),
   });
 }
 

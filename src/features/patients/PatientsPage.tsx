@@ -17,7 +17,7 @@ import {
   LoadingState,
 } from "../../components/ui/StateViews";
 import { useUser } from "../../context/UserContext";
-import { createPatient, listPatients, type PatientListItem } from "../../services/api/patientsApi";
+import { createPatient, createSimulationCase, listPatients, type PatientListItem } from "../../services/api/patientsApi";
 import { formatDateOnly, initialsOf } from "../../utils/format";
 
 const PAGE_SIZE = 25;
@@ -32,6 +32,7 @@ export default function PatientsPage() {
   const [search, setSearch] = useState("");
   const [sex, setSex] = useState<"all" | "F" | "M" | "OTHER">("all");
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [simulateOpen, setSimulateOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,9 +65,9 @@ export default function PatientsPage() {
   const withCases = items.filter((patient) => patient.activeCases > 0).length;
   const canRegister =
     activeUser &&
-    ["coordinator", "referring_clinician", "receiving_clinician", "national_admin"].includes(
-      activeUser.role
-    );
+    ["coordinator", "referring_clinician", "national_admin"].includes(activeUser.role);
+  const canSimulate =
+    activeUser && ["coordinator", "national_admin"].includes(activeUser.role);
 
   return (
     <div className="patients-page">
@@ -77,13 +78,24 @@ export default function PatientsPage() {
           <p>People with a record at your facility, and their cases.</p>
         </div>
         {canRegister && (
-          <button
-            type="button"
-            className="ui-btn ui-btn-primary"
-            onClick={() => setRegisterOpen(true)}
-          >
-            <Plus size={15} /> Register patient
-          </button>
+          <div className="patients-heading-actions">
+            {canSimulate && (
+              <button
+                type="button"
+                className="ui-btn ui-btn-secondary"
+                onClick={() => setSimulateOpen(true)}
+              >
+                <Plus size={15} /> Add simulation case
+              </button>
+            )}
+            <button
+              type="button"
+              className="ui-btn ui-btn-primary"
+              onClick={() => setRegisterOpen(true)}
+            >
+              <Plus size={15} /> Register patient
+            </button>
+          </div>
         )}
       </header>
 
@@ -245,6 +257,16 @@ export default function PatientsPage() {
           }}
         />
       )}
+
+      {simulateOpen && (
+        <SimulationCaseDialog
+          onClose={() => setSimulateOpen(false)}
+          onCreated={(caseId) => {
+            setSimulateOpen(false);
+            navigate(`/worklist?caseId=${encodeURIComponent(caseId)}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -259,6 +281,7 @@ function RegisterPatientDialog({
   const [displayLabel, setDisplayLabel] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState("F");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -270,6 +293,7 @@ function RegisterPatientDialog({
         displayLabel: displayLabel.trim(),
         ageYears: age ? Number(age) : null,
         sex: sex || null,
+        phone: phone.trim() || null,
       });
       onCreated(created.id);
     } catch (err) {
@@ -317,9 +341,18 @@ function RegisterPatientDialog({
             </select>
           </div>
           <div className="ui-field">
+            <label>Mobile phone (for the SMS patient link)</label>
+            <input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="e.g. +233 20 000 0000"
+              inputMode="tel"
+            />
+          </div>
+          <div className="ui-field">
             <span className="ui-hint">
-              This demo stores synthetic patients only. Manual entry creates the
-              patient record; add a case next so the pathway can start (T1).
+              This demo stores synthetic patients only. The phone number is used
+              only for simulated SMS delivery of secure links.
             </span>
           </div>
         </div>
@@ -334,6 +367,156 @@ function RegisterPatientDialog({
             onClick={() => void submit()}
           >
             Register patient
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SimulationCaseDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (caseId: string) => void;
+}) {
+  const [displayLabel, setDisplayLabel] = useState("");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState("F");
+  const [phone, setPhone] = useState("");
+  const [screeningType, setScreeningType] = useState("Cervical screening");
+  const [outcome, setOutcome] = useState("Abnormal");
+  const [priority, setPriority] = useState<"NORMAL" | "URGENT">("URGENT");
+  const [nextAction, setNextAction] = useState(
+    "Review the screening result with the patient"
+  );
+  const [confirmatory, setConfirmatory] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    try {
+      const created = await createSimulationCase({
+        displayLabel: displayLabel.trim(),
+        ageYears: age ? Number(age) : null,
+        sex: sex || null,
+        phone: phone.trim() || null,
+        screeningType: screeningType.trim(),
+        outcome: outcome.trim(),
+        priority,
+        confirmatoryRequired: confirmatory,
+        nextActionLabel: nextAction.trim() || undefined,
+      });
+      onCreated(created.caseNumber || created.caseId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to add the simulation case.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="ui-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="ui-modal" role="dialog" aria-modal="true" aria-label="Add simulation case">
+        <div className="ui-modal-header">
+          <h3>Add a simulation case</h3>
+          <button type="button" className="ui-btn ui-btn-ghost ui-btn-sm" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="ui-modal-body">
+          {error && <Alert tone="danger">{error}</Alert>}
+          <p className="ui-hint" style={{ marginTop: 0 }}>
+            Coordinator onboarding: registers a synthetic patient, records a
+            screening result and opens a case with a generated case ID.
+          </p>
+          <div className="ui-field">
+            <label>Patient name or label</label>
+            <input
+              value={displayLabel}
+              onChange={(event) => setDisplayLabel(event.target.value)}
+              placeholder="e.g. Demo Patient 12"
+            />
+          </div>
+          <div className="ui-field">
+            <label>Age (years)</label>
+            <input
+              type="number"
+              min={0}
+              max={130}
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+            />
+          </div>
+          <div className="ui-field">
+            <label>Sex</label>
+            <select value={sex} onChange={(event) => setSex(event.target.value)}>
+              <option value="F">Female</option>
+              <option value="M">Male</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div className="ui-field">
+            <label>Mobile phone (SMS patient link)</label>
+            <input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="e.g. +233 20 000 0000"
+              inputMode="tel"
+            />
+          </div>
+          <div className="ui-field">
+            <label>Screening type</label>
+            <input
+              value={screeningType}
+              onChange={(event) => setScreeningType(event.target.value)}
+            />
+          </div>
+          <div className="ui-field">
+            <label>Outcome</label>
+            <select value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+              <option value="Abnormal">Abnormal / positive</option>
+              <option value="Normal">Normal</option>
+              <option value="Inconclusive">Inconclusive</option>
+            </select>
+          </div>
+          <div className="ui-field">
+            <label>Priority</label>
+            <select
+              value={priority}
+              onChange={(event) => setPriority(event.target.value as "NORMAL" | "URGENT")}
+            >
+              <option value="URGENT">Urgent</option>
+              <option value="NORMAL">Routine</option>
+            </select>
+          </div>
+          <div className="ui-field">
+            <label>Next action</label>
+            <input value={nextAction} onChange={(event) => setNextAction(event.target.value)} />
+          </div>
+          <label className="ui-checkbox">
+            <input
+              type="checkbox"
+              checked={confirmatory}
+              onChange={(event) => setConfirmatory(event.target.checked)}
+            />
+            <span>Confirmatory test required</span>
+          </label>
+        </div>
+        <div className="ui-modal-footer">
+          <button type="button" className="ui-btn ui-btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-primary"
+            disabled={busy || !displayLabel.trim()}
+            onClick={() => void submit()}
+          >
+            {busy ? "Creating…" : "Create case"}
           </button>
         </div>
       </div>

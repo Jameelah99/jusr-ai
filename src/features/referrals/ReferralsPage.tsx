@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Alert from "../../components/ui/Alert";
+import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/ui/Pagination";
 import {
   EmptyState,
@@ -29,6 +30,7 @@ import type {
 import {
   acceptReferral,
   assignReferralClinician,
+  createReferral,
   declineReferral,
   escalateReferral,
   getReferral,
@@ -82,6 +84,64 @@ export default function ReferralsPage() {
   const [escalatedOnly, setEscalatedOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [startOpen, setStartOpen] = useState(false);
+  const [startCaseId, setStartCaseId] = useState("");
+  const [startFacilityId, setStartFacilityId] = useState("");
+  const [startClinicianId, setStartClinicianId] = useState("");
+  const [startSpecialty, setStartSpecialty] = useState("");
+  const [startReason, setStartReason] = useState("");
+  const [startFacilities, setStartFacilities] = useState<FacilityRecord[]>([]);
+  const [startBusy, setStartBusy] = useState(false);
+  const [startError, setStartError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const canStart =
+    activeUser?.role === "referring_clinician" ||
+    activeUser?.role === "receiving_clinician" ||
+    activeUser?.role === "national_admin";
+
+  const { staff } = useStaff({ role: "RECEIVING_CLINICIAN" });
+
+  useEffect(() => {
+    if (!startOpen) return;
+    listFacilities()
+      .then(setStartFacilities)
+      .catch(() => setStartFacilities([]));
+  }, [startOpen]);
+
+  async function submitStartReferral() {
+    setStartError("");
+    if (!startCaseId.trim() || !startFacilityId) {
+      setStartError("Case ID and receiving facility are required.");
+      return;
+    }
+    setStartBusy(true);
+    try {
+      await createReferral({
+        caseId: startCaseId.trim(),
+        receivingFacilityId: startFacilityId,
+        receivingClinicianId: startClinicianId || undefined,
+        targetSpecialty: startSpecialty.trim() || undefined,
+        reason: startReason.trim() || undefined,
+      });
+      setNotice("Referral sent. It now appears in the receiving facility's incoming list.");
+      setStartOpen(false);
+      setStartCaseId("");
+      setStartFacilityId("");
+      setStartClinicianId("");
+      setStartSpecialty("");
+      setStartReason("");
+      await load();
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : "Unable to send the referral.");
+    } finally {
+      setStartBusy(false);
+    }
+  }
+
+  const startClinicians = staff.filter(
+    (person) => !startFacilityId || person.facilityId === startFacilityId
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -165,7 +225,21 @@ export default function ReferralsPage() {
             accepted.
           </p>
         </div>
+        {canStart && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-primary"
+            onClick={() => {
+              setStartError("");
+              setStartOpen(true);
+            }}
+          >
+            Start referral
+          </button>
+        )}
       </header>
+
+      {notice && <Alert tone="success">{notice}</Alert>}
 
       <section className="referral-stats">
         {cards.map((card) => (
@@ -329,6 +403,92 @@ export default function ReferralsPage() {
           }
         />
       )}
+
+      <Modal
+        open={startOpen}
+        title="Start a referral"
+        subtitle="Send a case to another facility. The receiving side accepts or declines."
+        onClose={() => setStartOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="ui-btn ui-btn-secondary"
+              onClick={() => setStartOpen(false)}
+              disabled={startBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="ui-btn ui-btn-primary"
+              onClick={submitStartReferral}
+              disabled={startBusy}
+            >
+              {startBusy ? "Sending…" : "Send referral"}
+            </button>
+          </>
+        }
+      >
+        {startError && <Alert tone="danger">{startError}</Alert>}
+        <div style={{ display: "grid", gap: 12 }}>
+          <div className="ui-field">
+            <label>Case ID</label>
+            <input
+              value={startCaseId}
+              placeholder="Case ID or case number (e.g. C-1234ABCD)"
+              onChange={(event) => setStartCaseId(event.target.value)}
+            />
+          </div>
+          <div className="ui-field">
+            <label>Receiving facility</label>
+            <select
+              value={startFacilityId}
+              onChange={(event) => {
+                setStartFacilityId(event.target.value);
+                setStartClinicianId("");
+              }}
+            >
+              <option value="">Select a facility</option>
+              {startFacilities.map((facility) => (
+                <option key={facility.id} value={facility.id}>
+                  {facility.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ui-field">
+            <label>Receiving clinician (optional)</label>
+            <select
+              value={startClinicianId}
+              onChange={(event) => setStartClinicianId(event.target.value)}
+            >
+              <option value="">Unassigned — facility to assign</option>
+              {startClinicians.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.displayName}
+                  {person.specialty ? ` — ${person.specialty}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ui-field">
+            <label>Target specialty</label>
+            <input
+              value={startSpecialty}
+              onChange={(event) => setStartSpecialty(event.target.value)}
+            />
+          </div>
+          <div className="ui-field">
+            <label>Reason</label>
+            <textarea
+              rows={3}
+              value={startReason}
+              onChange={(event) => setStartReason(event.target.value)}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -81,11 +81,45 @@ export function createPatient(payload: {
   ageYears?: number | null;
   birthYear?: number | null;
   sex?: string | null;
+  phone?: string | null;
+  recordNumber?: string | null;
+  preferredLanguage?: "en" | "ar" | null;
 }) {
-  return apiRequest<{ id: string; displayLabel: string; isSynthetic: boolean }>(
-    "/api/patients",
-    { method: "POST", body: JSON.stringify(payload) }
-  );
+  return apiRequest<{
+    id: string;
+    displayLabel: string;
+    phone: string | null;
+    isSynthetic: boolean;
+  }>("/api/patients", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createSimulationCase(payload: {
+  displayLabel: string;
+  ageYears?: number | null;
+  birthYear?: number | null;
+  sex?: string | null;
+  phone?: string | null;
+  recordNumber?: string | null;
+  preferredLanguage?: "en" | "ar";
+  facilityId?: string;
+  screeningType?: string;
+  outcome?: string;
+  priority?: "NORMAL" | "URGENT";
+  confirmatoryRequired?: boolean;
+  nextActionLabel?: string;
+  requiredSpecialty?: string;
+}) {
+  return apiRequest<{
+    patientId: string;
+    caseId: string;
+    caseNumber: string;
+    trackerId: string | null;
+    status: string;
+    priority: string;
+  }>("/api/patients/simulation-case", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getPatientProfile(patientId: string) {

@@ -371,7 +371,7 @@ export function RoutingPanel({ caseData, busy, run }: PanelProps) {
                 disabled={busy}
               >
                 <option value="">Auto — first qualified clinician</option>
-                {matching.map((person) => (
+                {staff.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.displayName}
                     {person.specialty ? ` — ${person.specialty}` : ""}
@@ -389,7 +389,9 @@ export function RoutingPanel({ caseData, busy, run }: PanelProps) {
                     () =>
                       routeUrgentCase(caseData.id, {
                         receivingClinicianId: clinicianId || undefined,
-                        specialty,
+                        specialty:
+                          staff.find((person) => person.id === clinicianId)?.specialty ||
+                          specialty,
                       }),
                     "Urgent routing started."
                   )
@@ -609,7 +611,12 @@ export function MessagingPanel({ caseData, busy, run }: PanelProps) {
 export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
   const [links, setLinks] = useState<PatientLinkRecord[]>([]);
   const [responses, setResponses] = useState<PatientResponseRecord[]>([]);
-  const [generated, setGenerated] = useState<{ token: string; url: string; expiresAt: string } | null>(null);
+  const [generated, setGenerated] = useState<{
+    token: string;
+    url: string;
+    expiresAt: string;
+    sms: { to: string; status: string; simulated: boolean } | null;
+  } | null>(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -681,6 +688,9 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
                     token: link.token,
                     url: link.url,
                     expiresAt: link.expiresAt,
+                    sms: link.sms
+                      ? { to: link.sms.to, status: link.sms.status, simulated: link.sms.simulated }
+                      : null,
                   });
                   setReloadKey((value) => value + 1);
                   return link;
@@ -715,6 +725,18 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
                 </a>
                 <span className="cd-small">Expires {formatDateTime(generated.expiresAt)}</span>
               </div>
+              {generated.sms ? (
+                <p className="cd-small" style={{ marginTop: 8 }}>
+                  <strong>SMS {generated.sms.status.toLowerCase()}</strong> to{" "}
+                  {generated.sms.to}
+                  {generated.sms.simulated ? " (simulated delivery — no SMS gateway)" : ""}.
+                </p>
+              ) : (
+                <p className="cd-small" style={{ marginTop: 8 }}>
+                  No phone number on file, so no SMS was sent. Register the patient
+                  with a mobile number to deliver the link by SMS.
+                </p>
+              )}
             </div>
           </Alert>
         )}
@@ -732,6 +754,12 @@ export function PatientAccessPanel({ caseData, busy, run }: PanelProps) {
                 <span>Expires {formatDateTime(link.expiresAt)}</span>
                 <span>Failed attempts {link.failedAttempts}</span>
                 {link.verifiedAt && <span>Verified {formatDateTime(link.verifiedAt)}</span>}
+                {link.deliveredTo && (
+                  <span>
+                    SMS {humanize(link.deliveryStatus ?? "sent")} to {link.deliveredTo}
+                  </span>
+                )}
+                {link.deliveredAt && <span>Sent {formatDateTime(link.deliveredAt)}</span>}
               </div>
             </div>
           ))}
@@ -1033,10 +1061,14 @@ export function ReferralPanel({ caseData, busy, run }: PanelProps) {
   const isReferring = activeUser?.role === "referring_clinician";
   const isReceiving = activeUser?.role === "receiving_clinician";
   const canCoordinate = activeUser?.role === "coordinator" || activeUser?.role === "national_admin";
+  const canStartReferral =
+    isReferring || isReceiving || activeUser?.role === "national_admin";
 
   const canCreate =
-    isReferring &&
-    (caseData.status === "REFERRAL_PENDING" || caseData.status === "AWAITING_CONFIRMATION") &&
+    canStartReferral &&
+    (caseData.status === "AWAITING_ACK" ||
+      caseData.status === "AWAITING_CONFIRMATION" ||
+      caseData.status === "REFERRAL_PENDING") &&
     (!referral || referral.status === "DECLINED" || referral.status === "NOT_ACCEPTED_IN_TIME");
 
   const facilityClinicians = staff.filter(
@@ -1282,8 +1314,12 @@ export function ReferralPanel({ caseData, busy, run }: PanelProps) {
           </>
         )}
 
-        {!isReferring && canCreate && (
-          <p className="cd-small">Only a referring clinician can send a referral.</p>
+        {!canCreate && !referral && canStartReferral && (
+          <p className="cd-small">
+            A referral can be started once the patient has acknowledged the result
+            (AWAITING_ACK) or the confirmatory result has been received
+            (AWAITING_CONFIRMATION).
+          </p>
         )}
       </div>
     </div>

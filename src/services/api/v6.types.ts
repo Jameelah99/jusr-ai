@@ -457,6 +457,10 @@ export interface PatientLinkRecord {
   verifiedAt: string | null;
   lastAccessedAt: string | null;
   createdById: string | null;
+  deliveryChannel: string | null;
+  deliveryStatus: string | null;
+  deliveredTo: string | null;
+  deliveredAt: string | null;
 }
 
 export interface GeneratedPatientLink {
@@ -467,6 +471,14 @@ export interface GeneratedPatientLink {
   verificationRequired: boolean;
   resent: boolean;
   note: string;
+  sms: {
+    to: string;
+    status: string;
+    channel: string;
+    simulated: boolean;
+    sentAt: string;
+    body: string;
+  } | null;
 }
 
 export interface PatientResponseRecord {

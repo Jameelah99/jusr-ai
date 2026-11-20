@@ -1006,8 +1006,8 @@
   padding: 11px 20px;
   margin-top: 10px;
   color: #FFFFFF;
-  background: #009802;
-  border: 1px solid #009802;
+  background: #179FA2;
+  border: 1px solid #179FA2;
   border-radius: 9px;
   font-family: inherit;
   font-size: 12px;
@@ -1017,13 +1017,13 @@
 }
 
 .case-close-button:hover:not(:disabled) {
-  background: #007D02;
-  border-color: #007D02;
-  box-shadow: 0 3px 10px rgba(0, 152, 2, 0.2);
+  background: #12888B;
+  border-color: #12888B;
+  box-shadow: 0 3px 10px rgba(23, 159, 162, 0.22);
 }
 
 .case-close-button:focus-visible {
-  outline: 3px solid rgba(0, 152, 2, 0.25);
+  outline: 3px solid rgba(23, 159, 162, 0.25);
   outline-offset: 3px;
 }
 

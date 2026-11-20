@@ -66,6 +66,23 @@ export const aiService = {
     });
   },
 
+  // Deterministic rules-based generation (demo): staff trigger, staff approve.
+  async generateSuggestions(
+    request: { caseId?: string; kinds?: BackendAIKind[] } = {}
+  ): Promise<{ items: AISuggestionRecord[]; cases: number }> {
+    const response = await apiEnvelope<AISuggestionRecord[]>(
+      `${AI_BASE}/generate`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      }
+    );
+    return {
+      items: response.data,
+      cases: Number(response.meta.cases ?? 0),
+    };
+  },
+
   async getSuggestion(id: string): Promise<AISuggestionRecord> {
     return apiRequest<AISuggestionRecord>(
       `${AI_BASE}/${encodeURIComponent(id)}`

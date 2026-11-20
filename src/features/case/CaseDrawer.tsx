@@ -312,6 +312,7 @@ export default function CaseDrawer({
               {status === "AWAITING_ACK" && (
                 <>
                   <PatientAccessPanel {...panelProps} />
+                  <ReferralPanel {...panelProps} />
                   <MessagingPanel {...panelProps} />
                 </>
               )}

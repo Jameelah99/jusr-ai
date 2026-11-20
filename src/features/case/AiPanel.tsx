@@ -15,7 +15,9 @@ export default function AiPanel({
   const [summary, setSummary] = useState<ApprovedCaseSummary | null>(null);
   const [suggestions, setSuggestions] = useState<AISuggestionRecord[]>([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const load = useCallback(() => {
     aiService
@@ -29,6 +31,29 @@ export default function AiPanel({
   }, [caseId]);
 
   useEffect(load, [load]);
+
+  async function generate() {
+    setError("");
+    setNotice("");
+    setGenerating(true);
+    try {
+      const result = await aiService.generateSuggestions({
+        caseId,
+        kinds: ["CASE_SUMMARY", "URGENCY", "REFERRAL_TARGET", "MESSAGE_DRAFT"],
+      });
+      setNotice(
+        result.items.length > 0
+          ? `${result.items.length} new suggestion(s) created. A person must approve each one.`
+          : "No new suggestions — the pending items below already cover this case."
+      );
+      load();
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to generate suggestions.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function decide(
     suggestion: AISuggestionRecord,
@@ -69,12 +94,23 @@ export default function AiPanel({
           <h3>AI assistance</h3>
           <p>Suggestions are advice. A person always decides; approvals are audited.</p>
         </div>
-        <span className="ui-simulated-notice">
-          <strong>SIMULATED</strong> rules-based
-        </span>
+        <div className="cd-actions" style={{ alignItems: "center", paddingTop: 0 }}>
+          <span className="ui-simulated-notice">
+            <strong>SIMULATED</strong> rules-based
+          </span>
+          <button
+            type="button"
+            className="ui-btn ui-btn-secondary ui-btn-sm"
+            disabled={generating}
+            onClick={generate}
+          >
+            {generating ? "Generating…" : "Generate"}
+          </button>
+        </div>
       </div>
       <div className="cd-section-body">
         {error && <Alert tone="danger">{error}</Alert>}
+        {notice && <Alert tone="success">{notice}</Alert>}
 
         {summary ? (
           <div className="cd-item">

@@ -10,7 +10,7 @@
 .measures-eyebrow {
   display: inline-block;
   margin-bottom: 8px;
-  color: #009802;
+  color: #179FA2;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.3px;
@@ -18,7 +18,7 @@
 
 .measures-heading h1 {
   margin: 0 0 8px;
-  color: #17211b;
+  color: #172B4D;
   font-size: 28px;
   font-weight: 700;
 }
@@ -26,7 +26,7 @@
 .measures-heading p,
 .measures-section-heading p {
   margin: 0;
-  color: #68736c;
+  color: #667085;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -37,8 +37,8 @@
   gap: 12px;
   padding: 16px 18px;
   margin-bottom: 26px;
-  background: #f0f8f0;
-  border: 1px solid #d9ecd9;
+  background: #E6F5F4;
+  border: 1px solid #CFE9E7;
   border-radius: 10px;
 }
 
@@ -47,20 +47,20 @@
   height: 9px;
   flex: 0 0 9px;
   margin-top: 5px;
-  background: #009802;
+  background: #179FA2;
   border-radius: 50%;
 }
 
 .measures-notice strong {
   display: block;
   margin-bottom: 4px;
-  color: #176b20;
+  color: #0F6E70;
   font-size: 13px;
 }
 
 .measures-notice p {
   margin: 0;
-  color: #536b56;
+  color: #667085;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -69,7 +69,7 @@
 .measure-card,
 .comparison-panel {
   background: #fff;
-  border: 1px solid #e7ebe7;
+  border: 1px solid #E6EAF0;
   border-radius: 12px;
 }
 
@@ -88,7 +88,7 @@
 
 .measures-section-heading h2 {
   margin: 0 0 5px;
-  color: #17211b;
+  color: #172B4D;
   font-size: 17px;
   font-weight: 700;
 }
@@ -96,7 +96,7 @@
 .filter-label,
 .measure-count,
 .comparison-tag {
-  color: #68736c;
+  color: #667085;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.7px;
@@ -115,7 +115,7 @@
 }
 
 .measures-filters label span {
-  color: #4f5b53;
+  color: #475467;
   font-size: 12px;
   font-weight: 600;
 }
@@ -126,9 +126,9 @@
   min-width: 0;
   height: 40px;
   padding: 0 11px;
-  color: #26332a;
+  color: #172B4D;
   background: #fff;
-  border: 1px solid #dfe5df;
+  border: 1px solid #D0D5DD;
   border-radius: 7px;
   font: inherit;
   font-size: 12px;
@@ -137,8 +137,8 @@
 
 .measures-filters select:focus,
 .measures-filters input:focus {
-  border-color: #009802;
-  box-shadow: 0 0 0 3px rgba(0, 152, 2, 0.08);
+  border-color: #179FA2;
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.08);
 }
 
 .measures-section {
@@ -172,29 +172,29 @@
   justify-content: center;
   width: 34px;
   height: 28px;
-  color: #087d13;
-  background: #edf8ed;
+  color: #179FA2;
+  background: #E6F5F4;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
 }
 
 .measure-display {
-  color: #778179;
+  color: #667085;
   font-size: 10px;
   text-align: right;
 }
 
 .measure-card h3 {
   margin: 0 0 9px;
-  color: #1d2921;
+  color: #172B4D;
   font-size: 14px;
   line-height: 1.5;
 }
 
 .measure-definition {
   margin: 0 0 18px;
-  color: #68736c;
+  color: #667085;
   font-size: 12px;
   line-height: 1.65;
 }
@@ -205,18 +205,18 @@
   gap: 5px;
   margin-top: auto;
   padding-top: 13px;
-  border-top: 1px solid #edf0ed;
+  border-top: 1px solid #E6EAF0;
 }
 
 .measure-card-footer span {
-  color: #89928b;
+  color: #98A2B3;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.7px;
 }
 
 .measure-card-footer strong {
-  color: #47544a;
+  color: #475467;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.5;
@@ -225,8 +225,8 @@
 .measure-pending {
   margin-top: 12px;
   padding: 8px 10px;
-  color: #777f78;
-  background: #f6f7f6;
+  color: #667085;
+  background: #F8FAFC;
   border-radius: 6px;
   font-size: 11px;
 }
@@ -250,7 +250,7 @@
   align-items: center;
   gap: 11px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #edf0ed;
+  border-bottom: 1px solid #E6EAF0;
 }
 
 .comparison-dot {
@@ -261,22 +261,22 @@
 }
 
 .baseline-dot {
-  background: #9ba4a0;
+  background: #98A2B3;
 }
 
 .tracker-dot {
-  background: #009802;
+  background: #179FA2;
 }
 
 .comparison-panel-heading h3 {
   margin: 0 0 4px;
-  color: #26332a;
+  color: #172B4D;
   font-size: 14px;
 }
 
 .comparison-panel-heading p {
   margin: 0;
-  color: #7b857d;
+  color: #667085;
   font-size: 11px;
 }
 
@@ -288,14 +288,14 @@
 .comparison-empty strong {
   display: block;
   margin-bottom: 7px;
-  color: #39463c;
+  color: #344054;
   font-size: 13px;
 }
 
 .comparison-empty p {
   max-width: 300px;
   margin: 0 auto;
-  color: #7b857d;
+  color: #667085;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -349,15 +349,15 @@
   gap: 8px 20px;
   padding: 12px 16px;
   margin-bottom: 24px;
-  color: #4f5b53;
-  background: #f7faf7;
-  border: 1px solid #e7ebe7;
+  color: #475467;
+  background: #F2FAFA;
+  border: 1px solid #E6EAF0;
   border-radius: 9px;
   font-size: 12px;
 }
 
 .measures-scope strong {
-  color: #17211b;
+  color: #172B4D;
 }
 
 .measure-values {
@@ -373,7 +373,7 @@
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 6px;
-  border-bottom: 1px dashed #edf0ed;
+  border-bottom: 1px dashed #E6EAF0;
   font-size: 12px;
 }
 
@@ -383,11 +383,11 @@
 }
 
 .measure-value span {
-  color: #68736c;
+  color: #667085;
 }
 
 .measure-value strong {
-  color: #17211b;
+  color: #172B4D;
   font-size: 13px;
   text-align: right;
 }
@@ -405,8 +405,8 @@
 
 .baseline-table td {
   padding: 8px 4px;
-  border-bottom: 1px solid #edf0ed;
-  color: #4f5b53;
+  border-bottom: 1px solid #E6EAF0;
+  color: #475467;
 }
 
 .baseline-table tr:last-child td {
@@ -415,7 +415,7 @@
 
 .baseline-table td:last-child {
   text-align: right;
-  color: #17211b;
+  color: #172B4D;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -428,7 +428,7 @@
 
 .measures-detail-title {
   margin: 4px 0 12px;
-  color: #26332a;
+  color: #172B4D;
   font-size: 13px;
 }
 
@@ -463,8 +463,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 2px;
-  border-bottom: 1px solid #edf0ed;
-  color: #4f5b53;
+  border-bottom: 1px solid #E6EAF0;
+  color: #475467;
   font-size: 12px;
 }
 
@@ -473,11 +473,11 @@
 }
 
 .delay-list strong {
-  color: #17211b;
+  color: #172B4D;
 }
 
 .measures-muted {
-  color: #7b857d;
+  color: #667085;
   font-size: 12px;
 }
 

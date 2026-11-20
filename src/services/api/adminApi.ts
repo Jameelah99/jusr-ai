@@ -27,6 +27,22 @@ export function createFacility(payload: {
   });
 }
 
+export function updateFacility(
+  facilityId: string,
+  payload: Partial<{
+    name: string;
+    type: string | null;
+    timeZone: string;
+    workingDays: string[] | null;
+    connectorType: "FEED_SIMULATOR" | "CSV";
+  }>
+) {
+  return apiRequest<FacilityRecord>(
+    `/api/admin/facilities/${encodeURIComponent(facilityId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}
+
 export function listStaff(params: {
   facilityId?: string;
   role?: string;
@@ -58,7 +74,9 @@ export function createStaff(payload: {
 export function updateStaff(
   userId: string,
   payload: Partial<{
+    email: string;
     displayName: string;
+    facilityId: string;
     role: string;
     specialty: string | null;
     authorisedToClose: boolean;

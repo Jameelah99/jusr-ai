@@ -8,7 +8,7 @@
 .settings-eyebrow {
   display: block;
   margin-bottom: 8px;
-  color: #009802;
+  color: #179FA2;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.9px;
@@ -58,7 +58,7 @@
 
 .settings-navigation h3 {
   margin: 0 7px 12px;
-  color: #009802;
+  color: #179FA2;
   font-size: 10px;
   letter-spacing: 0.8px;
 }
@@ -77,8 +77,8 @@
 
 .settings-nav-item:hover,
 .settings-nav-item.active {
-  background: #eaf7eb;
-  color: #008a02;
+  background: #E6F5F4;
+  color: #12888B;
 }
 
 .settings-content {
@@ -103,7 +103,7 @@
   padding-bottom: 17px;
   margin-bottom: 20px;
   border-bottom: 1px solid #edf1f5;
-  color: #009802;
+  color: #179FA2;
 }
 
 .settings-section-heading h2 {
@@ -149,8 +149,8 @@
 
 .settings-field input:focus,
 .settings-field select:focus {
-  border-color: #009802;
-  box-shadow: 0 0 0 3px rgba(0, 152, 2, 0.08);
+  border-color: #179FA2;
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.08);
 }
 
 .settings-field input[readonly] {
@@ -254,12 +254,12 @@
 
 .settings-save-button {
   border: none;
-  background: #009802;
+  background: #179FA2;
   color: #fff;
 }
 
 .settings-save-button:disabled {
-  background: #a9cda9;
+  background: #9CCFCE;
   cursor: not-allowed;
   opacity: 0.75;
 }

@@ -17,7 +17,7 @@
 }
 
 .contact-support-back:hover {
-  color: #009802;
+  color: #179FA2;
 }
 
 .support-form-layout {
@@ -37,7 +37,7 @@
   align-items: center;
   gap: 13px;
   margin-bottom: 22px;
-  color: #009802;
+  color: #179FA2;
 }
 
 .support-form-heading h2 {
@@ -125,8 +125,8 @@
 .support-form-grid input:focus,
 .support-form-grid select:focus,
 .support-form-grid textarea:focus {
-  border-color: #009802;
-  box-shadow: 0 0 0 3px rgba(0, 152, 2, 0.09);
+  border-color: #179FA2;
+  box-shadow: 0 0 0 3px rgba(23, 159, 162, 0.09);
 }
 
 .support-form-footer {
@@ -157,7 +157,7 @@
   padding: 0 19px;
   border: none;
   border-radius: 8px;
-  background: #009802;
+  background: #179FA2;
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -166,21 +166,21 @@
 
 .support-form-footer button:hover,
 .support-success button:hover {
-  background: #007d02;
+  background: #12888B;
 }
 
 .support-success {
   max-width: 650px;
   margin-top: 28px;
   padding: 40px 28px;
-  border: 1px solid #d5edd7;
+  border: 1px solid #CFE9E7;
   border-radius: 13px;
-  background: #f7fcf7;
+  background: #F2FAFA;
   text-align: center;
 }
 
 .support-success > svg {
-  color: #009802;
+  color: #179FA2;
 }
 
 .support-success h2 {
@@ -205,7 +205,7 @@
   min-width: 190px;
   padding: 15px 24px;
   margin: 24px auto;
-  border: 1px dashed #b8dcbc;
+  border: 1px dashed #BFE6E4;
   border-radius: 9px;
   background: #fff;
 }

@@ -21,13 +21,13 @@
 }
 
 .user-guide-back:hover {
-  color: #009802;
+  color: #179FA2;
 }
 
 .user-guide-header .page-eyebrow {
   display: block;
   margin-bottom: 9px;
-  color: #009802;
+  color: #179FA2;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -53,10 +53,10 @@
   gap: 18px;
   padding: 25px;
   margin-bottom: 28px;
-  border: 1px solid #d5edd7;
+  border: 1px solid #CFE9E7;
   border-radius: 13px;
-  background: #eaf7eb;
-  color: #009802;
+  background: #E6F5F4;
+  color: #179FA2;
 }
 
 .user-guide-intro > svg {
@@ -94,7 +94,7 @@
 
 .user-guide-contents h3 {
   margin: 0 0 16px;
-  color: #009802;
+  color: #179FA2;
   font-size: 10px;
   letter-spacing: 0.8px;
 }
@@ -118,13 +118,13 @@
 }
 
 .user-guide-contents a:hover {
-  background: #f0f8f0;
-  color: #008a02;
+  background: #E6F5F4;
+  color: #12888B;
 }
 
 .user-guide-contents a span {
   flex-shrink: 0;
-  color: #009802;
+  color: #179FA2;
   font-size: 10px;
   font-weight: 700;
 }
@@ -160,12 +160,12 @@
   height: 40px;
   flex-shrink: 0;
   border-radius: 9px;
-  background: #eaf7eb;
-  color: #009802;
+  background: #E6F5F4;
+  color: #179FA2;
 }
 
 .user-guide-section-heading span {
-  color: #009802;
+  color: #179FA2;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.8px;

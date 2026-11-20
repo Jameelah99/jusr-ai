@@ -54,6 +54,12 @@ export function importEventsCsv(csv: string) {
   });
 }
 
+export function getEventsCsvTemplate() {
+  return apiRequest<{ csv: string; facility: string; patient: string }>(
+    "/api/events/csv/template"
+  );
+}
+
 export async function getRejectedEvents(params: {
   facilityId?: string;
   page?: number;

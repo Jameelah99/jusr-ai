@@ -228,6 +228,7 @@ export default function AIReviewPage() {
   const [approveNote, setApproveNote] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -330,6 +331,32 @@ export default function AIReviewPage() {
     }
   }
 
+  async function handleGenerate() {
+    setGenerating(true);
+    setError("");
+    try {
+      const target = caseId.trim();
+      const result = await aiService.generateSuggestions(
+        target ? { caseId: target } : {}
+      );
+      setNotice(
+        result.items.length > 0
+          ? `Generated ${result.items.length} new suggestion(s) across ${result.cases} case(s). They are pending review.`
+          : "No new suggestions were generated — these cases already have pending items or nothing eligible."
+      );
+      setPage(1);
+      setStatus("PENDING");
+      if (!target) setKind("");
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to generate suggestions."
+      );
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   function applyFilters() {
     setPage(1);
     setAppliedCaseId(caseId.trim());
@@ -353,6 +380,18 @@ export default function AIReviewPage() {
             reject with a recorded reason.
           </p>
         </div>
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary"
+          onClick={handleGenerate}
+          disabled={generating || !activeUser}
+        >
+          {generating
+            ? "Generating…"
+            : caseId.trim()
+              ? "Generate for this case"
+              : "Generate suggestions"}
+        </button>
       </div>
 
       <div className="air-filters">

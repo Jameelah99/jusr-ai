@@ -14,7 +14,7 @@
 .facilities-eyebrow {
   display: inline-block;
   margin-bottom: 8px;
-  color: #009802;
+  color: #179FA2;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.2px;
@@ -22,13 +22,13 @@
 
 .facilities-heading h1 {
   margin: 0 0 8px;
-  color: #17211b;
+  color: #172B4D;
   font-size: 28px;
 }
 
 .facilities-heading p {
   margin: 0;
-  color: #68736c;
+  color: #667085;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -41,7 +41,7 @@
   min-height: 40px;
   padding: 0 15px;
   color: #fff;
-  background: #009802;
+  background: #179FA2;
   border: 0;
   border-radius: 7px;
   font-size: 12px;
@@ -50,7 +50,7 @@
 }
 
 .add-facility-button:hover {
-  background: #007e02;
+  background: #12888B;
 }
 
 .facilities-notice {
@@ -59,9 +59,9 @@
   gap: 11px;
   padding: 15px 17px;
   margin-bottom: 22px;
-  color: #176b20;
-  background: #f0f8f0;
-  border: 1px solid #d9ecd9;
+  color: #0F6E70;
+  background: #E6F5F4;
+  border: 1px solid #CFE9E7;
   border-radius: 10px;
 }
 
@@ -78,7 +78,7 @@
 
 .facilities-notice p {
   margin: 0;
-  color: #536b56;
+  color: #667085;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -97,7 +97,7 @@
   min-width: 0;
   padding: 17px;
   background: #fff;
-  border: 1px solid #e7ebe7;
+  border: 1px solid #E6EAF0;
   border-radius: 11px;
 }
 
@@ -114,8 +114,8 @@
 }
 
 .facility-summary-icon.connected-icon {
-  color: #087d13;
-  background: #edf8ed;
+  color: #179FA2;
+  background: #E6F5F4;
 }
 
 .facility-summary-icon.rejected-icon {
@@ -130,13 +130,13 @@
 
 .facility-summary-card p {
   margin: 0 0 5px;
-  color: #778179;
+  color: #667085;
   font-size: 11px;
 }
 
 .facility-summary-card h2 {
   margin: 0;
-  color: #1d2921;
+  color: #172B4D;
   font-size: 23px;
   font-weight: 700;
 }
@@ -145,7 +145,7 @@
 .facility-detail-panel {
   padding: 20px;
   background: #fff;
-  border: 1px solid #e7ebe7;
+  border: 1px solid #E6EAF0;
   border-radius: 12px;
 }
 
@@ -159,13 +159,13 @@
 
 .facilities-content-heading h2 {
   margin: 0 0 5px;
-  color: #1d2921;
+  color: #172B4D;
   font-size: 17px;
 }
 
 .facilities-content-heading p {
   margin: 0;
-  color: #68736c;
+  color: #667085;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -178,15 +178,15 @@
   max-width: 100%;
   height: 39px;
   padding: 0 11px;
-  color: #89928b;
-  border: 1px solid #dfe5df;
+  color: #98A2B3;
+  border: 1px solid #D0D5DD;
   border-radius: 7px;
 }
 
 .facility-search input {
   width: 100%;
   min-width: 0;
-  color: #26332a;
+  color: #172B4D;
   background: transparent;
   border: 0;
   outline: 0;
@@ -210,7 +210,7 @@
   text-align: left;
   background: #fff;
   border: 0;
-  border-bottom: 1px solid #edf0ed;
+  border-bottom: 1px solid #E6EAF0;
   cursor: pointer;
 }
 
@@ -220,7 +220,7 @@
 
 .facility-row:hover,
 .facility-row-selected {
-  background: #f8fbf8;
+  background: #F2FAFA;
 }
 
 .facility-row-icon {
@@ -230,8 +230,8 @@
   width: 40px;
   height: 40px;
   flex: 0 0 40px;
-  color: #087d13;
-  background: #edf8ed;
+  color: #179FA2;
+  background: #E6F5F4;
   border-radius: 9px;
 }
 
@@ -245,14 +245,14 @@
 
 .facility-row-main strong {
   overflow: hidden;
-  color: #26332a;
+  color: #172B4D;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .facility-row-main small {
-  color: #89928b;
+  color: #98A2B3;
   font-size: 11px;
 }
 
@@ -268,8 +268,8 @@
 }
 
 .status-connected {
-  color: #087d13;
-  background: #edf8ed;
+  color: #179FA2;
+  background: #E6F5F4;
 }
 
 .status-disconnected {
@@ -284,14 +284,14 @@
 
 .facility-rejected-count {
   min-width: 70px;
-  color: #68736c;
+  color: #667085;
   font-size: 11px;
   text-align: right;
 }
 
 .facility-row-chevron {
   flex: 0 0 auto;
-  color: #89928b;
+  color: #98A2B3;
 }
 
 .facility-empty-state {
@@ -300,12 +300,12 @@
   align-items: center;
   gap: 8px;
   padding: 40px 15px;
-  color: #89928b;
+  color: #98A2B3;
   text-align: center;
 }
 
 .facility-empty-state strong {
-  color: #39463c;
+  color: #344054;
   font-size: 13px;
 }
 
@@ -321,8 +321,8 @@
 .facility-close-button {
   padding: 7px 12px;
   color: #59665c;
-  background: #f4f6f4;
-  border: 1px solid #e5e9e5;
+  background: #F8FAFC;
+  border: 1px solid #E6EAF0;
   border-radius: 6px;
   font-size: 11px;
   cursor: pointer;
@@ -342,12 +342,12 @@
 }
 
 .facility-detail-grid span {
-  color: #89928b;
+  color: #98A2B3;
   font-size: 11px;
 }
 
 .facility-detail-grid strong {
-  color: #26332a;
+  color: #172B4D;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -368,7 +368,7 @@
   max-width: 440px;
   padding: 23px;
   background: #fff;
-  border: 1px solid #e7ebe7;
+  border: 1px solid #E6EAF0;
   border-radius: 13px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.16);
 }
@@ -382,7 +382,7 @@
 
 .facility-modal-heading h2 {
   margin: 0;
-  color: #1d2921;
+  color: #172B4D;
   font-size: 19px;
 }
 
@@ -392,7 +392,7 @@
 
 .facility-modal > p {
   margin: 17px 0;
-  color: #68736c;
+  color: #667085;
   font-size: 13px;
   line-height: 1.7;
 }
@@ -401,8 +401,8 @@
   min-height: 38px;
   padding: 0 15px;
   color: #465349;
-  background: #f4f6f4;
-  border: 1px solid #e5e9e5;
+  background: #F8FAFC;
+  border: 1px solid #E6EAF0;
   border-radius: 7px;
   font-size: 12px;
   font-weight: 600;
@@ -586,7 +586,7 @@
 
 .facility-filter-row label span,
 .facility-inline-filter span {
-  color: #4f5b53;
+  color: #475467;
   font-size: 11px;
   font-weight: 600;
 }
@@ -595,9 +595,9 @@
 .facility-inline-filter select {
   min-height: 38px;
   padding: 0 10px;
-  color: #26332a;
+  color: #172B4D;
   background: #fff;
-  border: 1px solid #dfe5df;
+  border: 1px solid #D0D5DD;
   border-radius: 7px;
   font: inherit;
   font-size: 12px;
@@ -616,7 +616,7 @@
 .csv-import textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #dfe5df;
+  border: 1px solid #D0D5DD;
   border-radius: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
